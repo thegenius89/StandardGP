@@ -42,6 +42,11 @@ class Config:
         self.constants     = True   # insert random variables
 ```
 
+## Supported Operators/Functions/Constants
++, -, *, /, %
+sin, cos, tan, exp, sqrt, log, abs, neg, square
+pi, pi/2, e, 1, 2, 0, 0.5
+
 ## Coming tomorrow
 - Multiprocessing search (already done)
 - All classes functions and variables get better names
