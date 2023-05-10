@@ -9,6 +9,7 @@ To provide a comparison algorithm between new GP variants and StandardGP - this 
  - Subtree-Cache that includes the isomorphism between functions
  - Subtree-Mutation based on fitness
  - Subtree-Crossover determines a good internal node based on tree-size
+ - Function-space reduction via scale and location invariance
 
 ## Usage:
 ```
@@ -25,14 +26,14 @@ print("RMSE:", np.sqrt(np.mean(np.square(gp.predict(x) - y))))
 You can see how huge your dataset can be without losing performance by changing the 200 to say 2000.
 
 ## Advanced usage:
-All the hyperparameters are very good choosen - for many cases there is no need to adjust them.
-The [...,...] are recommanded ranges.
+All the hyperparameters are very good chosen - for many cases there is no need to adjust them.
+The [...,...] are recommended ranges.
 ```
 class Config:
     def __init__(self):
         self.precision     = 0.99999999
         self.gens          = 100    # [1, n] number of generations
-        self.elites        = 0.07   # [0, 0.5] reproduction copies per generation
+        self.elites        = 0.07   # [0, 0.3] reproduction copies per generation
         self.crossovers    = 0.60   # [0, 2.0] inplace crossover on population
         self.mutations     = 0.09   # [0, 1.0] probabillity per tree per generation to mutate
         self.pop_size      = 4000   # [1, n] number of trees
