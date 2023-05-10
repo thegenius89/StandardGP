@@ -25,7 +25,6 @@ class TreeFunction:
         self.tar = self.normalize(y)
 
     def normalize(self, pred: ndarray) -> ndarray:
-        # normalize dataset around 0
         pred = pred - add.reduce(pred) / self.size
         pred += rand(int(self.size)) * self.cfg.noise
         pred = pred / (add.reduce(pred * pred) ** 0.5)
@@ -39,5 +38,5 @@ class TreeFunction:
             slope, intercept, _r, _p, _std_err = linregress(x, y)
             slope, intercept = round(slope, 8), round(intercept, 8)
             return "{} + {} * ({})".format(intercept, slope, repr)
-        except Exception as ex:
+        except Exception:
             return repr
