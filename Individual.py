@@ -41,6 +41,7 @@ class Individual:
         self.probl_size = grammar.problem.size
         self.hash = self.genome.hash
 
+    # fitness with reduced function space <
     def get_fit(self, gen) -> float:
         cfg = self.cfg
         maxi = cfg.max_nodes
@@ -79,7 +80,9 @@ class Individual:
                                     self.parse(root.right))
             Individual.subtree_cache[key] = new_result
             return new_result
+    # >
 
+    # creates a new random tree <
     def rand_tree(self, root: Node, min_d=2, max_d=4) -> Node:
         if random() < self.cfg.operators and max_d > 1:
             root.label, root.value = next(self.gram.tnts_iter)
@@ -107,7 +110,9 @@ class Individual:
                 root.hash = root.value
         self.node_refs[root.id] = root
         return root
+    # >
 
+    # repair tree after change for fast access and hash calculation <
     def fix_sizes(self, root: Node, diff: int) -> None:
         next_par = root
         while next_par.parent:
@@ -150,7 +155,9 @@ class Individual:
             k_0 = root.left.id
             self.node_refs[k_0] = other.node_refs.pop(k_0)
             self.fix_refs(root.left, other)
+    # >
 
+    # genetic operators <
     def subtree_mutate(self) -> None:
         pos = next(self.gram.rand_nodes[self.tree_cnt])
         node = list(self.node_refs.values())[pos]
@@ -175,6 +182,7 @@ class Individual:
         maxi = self.cfg.max_nodes
         cnt = 0
         while True:
+            # search for a good crossover node
             pos_1 = next(rng[self.tree_cnt])
             pos_2 = next(rng[other.tree_cnt])
             subt_1 = own_nodes[pos_1]
@@ -182,21 +190,21 @@ class Individual:
             new_size_1 = self.tree_cnt + subt_2.node_cnt - subt_1.node_cnt
             new_size_2 = other.tree_cnt + subt_1.node_cnt - subt_2.node_cnt
             if subt_1.node_cnt == 1 or subt_2.node_cnt == 1:
-                pass
+                pass # not allowed because no internal nodes
             elif subt_1.hash == subt_2.hash:
-                pass
+                pass # not allowed because there is no effect except blow
             elif new_size_1 < 3:
-                pass
+                pass # result would be too small
             elif new_size_2 < 3:
-                pass
+                pass # result would be too small
             elif new_size_1 >= maxi:
-                pass
+                pass # result would be too large
             elif new_size_2 >= maxi:
-                pass
+                pass # result would be too large
             elif abs(new_size_1 - new_size_2) > self.cfg.grow_limit:
-                pass
+                pass # results would grow too fast
             else:
-                break
+                break # found a node
             if cnt > 8:
                 return False
             cnt += 1
@@ -223,7 +231,9 @@ class Individual:
         if subt_1.right:
             subt_1.right.parent = subt_1
         return True
+    # >
 
+    # tree copy <
     def copy_rec(self, root: Node, other) -> None:
         root.value, root.label = other.value, other.label
         root.node_cnt = other.node_cnt
@@ -253,7 +263,9 @@ class Individual:
         self.genome.id = Node.ID
         Node.ID += 1
         self.copy_rec(self.genome, other.genome)
+    # >
 
+    # for printing only <
     def as_expression(self, root, expr="") -> str:
         if not root.left and not root.right:
             return root.label
@@ -264,3 +276,38 @@ class Individual:
             subt_1 = self.as_expression(root.left, expr)
             subt_2 = self.as_expression(root.right, expr)
             return "(" + subt_1 + ")" + root.label + "(" + subt_2 + ")"
+    # >
+
+    # simplification <
+    def simplify(self) -> object:
+        self.simplify_rec(self.genome)
+        return self
+
+    def simplify_rec(self, root: Node) -> float:
+        if not root.left and not root.right:
+            return root.value
+        elif root.left and not root.right:
+            new_result = root.value(self.simplify_rec(root.left))
+            if not isinstance(new_result, ndarray):
+                self.remove_node(root, new_result)
+            return new_result
+        else:
+            new_result = root.value(self.simplify_rec(root.left),
+                                    self.simplify_rec(root.right))
+            if not isinstance(new_result, ndarray):
+                self.remove_node(root, new_result)
+            return new_result
+
+    def remove_node(self, root, new_const) -> None:
+        self.remove_refs(root)
+        self.fix_sizes(root, -(root.node_cnt - 1))
+        root.node_cnt = 1
+        root.left = None
+        root.right = None
+        root.value = new_const
+        root.label = str(root.value)
+        root.hash_l = 0
+        root.hash_r = 0
+        root.hash = new_const
+        self.fix_hashs(root)
+    # >
