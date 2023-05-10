@@ -43,9 +43,9 @@ class Config:
 ```
 
 ## Supported Operators/Functions/Constants
-+, -, *, /, %
-sin, cos, tan, exp, sqrt, log, abs, neg, square
-pi, pi/2, e, 1, 2, 0, 0.5
+    +, -, *, /, %
+    sin, cos, tan, exp, sqrt, log, abs, neg, square
+    pi, pi/2, e, 1, 2, 0, 0.5
 
 ## Coming tomorrow
 - Multiprocessing search (already done)
