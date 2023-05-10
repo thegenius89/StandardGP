@@ -1,24 +1,29 @@
 # Copyright (c) 2023, Thure Foken.
 # All rights reserved.
 
+import numpy as np
+
+from Helper import plog, pexp
 from StandardGP import GP
 
 
 def main() -> None:
-    # hidden function to find
-    func = "sin(x * x) * cos(y - 1)"
-    # func = "sin(x * x + 1) * cos(y * 2)"
-    # func = "x ** 4 - x ** 3 - x ** 2 - x"
-    # func = "x ** 6 + x ** 5 + x ** 4 + x ** 3 + x ** 2 + x"
-    # func = "log(x + 1) + log(x ** 2 + 1)"
-    # func = "(1 - x) ** 2 + (y - x ** 2) ** 2"
-    # func = "x ** 4 - x ** 3 + 0.5 * y ** 2 - y"
-    # func = "x * y + sin((x - 1) * (y - 1))"
-    # func = "x ** 3 + y ** 3 - y - x"
-    # func = "((tan(x) / exp(y)) * (log(z) - tan(v)))"
-    gp = GP(func)
+    # finding model for
+    x = np.random.rand(200, 5) * 4 - 2
+    y = np.sin(x[:, 0] * x[:, 0]) * np.cos(x[:, 1] - 1) * 188 - 243
+    # y = plog(x[:, 0] + 1) + plog(x[:, 0] ** 2 + 1)
+    # y = np.sin(x[:, 0] * x[:, 0] + 1) * np.cos(x[:, 1] * 2)
+    # y = x[:, 0] ** 4 - x[:, 0] ** 3 - x[:, 0] ** 2 - x[:, 0]
+    # y = x[:, 0] ** 6 + x[:, 0] ** 5 + x[:, 0] ** 4 + x[:, 0] ** 3 + x[:, 0] ** 2 + x[:, 0]
+    # y = (1 - x[:, 0]) ** 2 + (x[:, 1] - x[:, 0] ** 2) ** 2
+    # y = x[:, 0] ** 4 - x[:, 0] ** 3 + 0.5 * x[:, 1] ** 2 - x[:, 1]
+    # y = x[:, 0] * x[:, 1] + np.sin((x[:, 0] - 1) * (x[:, 1] - 1))
+    # y = x[:, 0] ** 3 + x[:, 1] ** 3 - x[:, 1] - x[:, 0]
+    # y = ((np.tan(x[:, 0]) / pexp(x[:, 1])) * (plog(x[:, 2]) - np.tan(x[:, 3])))
+    gp = GP(x, y)
     best, repr = gp.run(show=True)
     print("Gen: {}, Fit: {}, Expr: {}".format(gp.gen, round(best, 9), repr))
+    print("RMSE:", np.sqrt(np.mean(np.square(gp.predict(x) - y))))
 
 
 if __name__ == "__main__":
