@@ -13,27 +13,28 @@ from Helper import hpdiv, hadd, hsub, hmul
 
 class TreeGrammar:
 
-    def __init__(self, cfg, space: dict):
-        self.cfg, self.space = cfg, space
+    def __init__(self, cfg, problem):
+        self.cfg, self.space = cfg, problem.namespace
+        self.problem = problem
         self.ts = [
-            ("x", space["x"]), ("y", space["y"]), ("0", 0.0),
-            ("v", space["v"]), ("w", space["w"]), ("0.5", 0.5),
-            ("z", space["z"]), ("pi", space["pi"]), ("2", 2.0),
-            ("pih", space["pih"]), ("1", 1.0),
+            ("0", 0.0), ("0.5", 0.5), ("1", 1.0), ("2", 2.0),
+            ("pi", self.space["pi"]), ("pih", self.space["pih"]),
         ]
+        for input in range(problem.x_train.shape[0]):
+            self.ts.append(("x{}".format(input), problem.x_train[input]))
         self.tnts = [
             ("+", add), ("+", add), ("-", subtract), ("*", multiply),
-            ("/", space["div"]), ("-", subtract), ("*", multiply),
+            ("/", self.space["div"]), ("-", subtract), ("*", multiply),
         ]
         self.onts = [
-            ("sin", space["sin"]), ("cos", space["cos"]),
-            ("abs", space["abs"]), ("neg", space["neg"]),
-            ("log", space["log"]), ("exp", space["exp"]),
-            ("sqrt", space["sqrt"]), ("sq", space["sq"]),
-            ("tan", space["tan"]),
+            ("sin", self.space["sin"]), ("cos", self.space["cos"]),
+            ("abs", self.space["abs"]), ("neg", self.space["neg"]),
+            ("log", self.space["log"]), ("exp", self.space["exp"]),
+            ("sqrt", self.space["sqrt"]), ("sq", self.space["sq"]),
+            ("tan", self.space["tan"]),
         ]
         self.mapper = {}
-        self.add_keys(space)
+        self.add_keys(self.space)
         self.ts_iter = cycle([choice(self.ts) for _ in range(1223)])
         self.tnts_iter = cycle([choice(self.tnts) for _ in range(937)])
         self.onts_iter = cycle([choice(self.onts) for _ in range(1069)])
@@ -43,13 +44,14 @@ class TreeGrammar:
 
     def add_keys(self, space, cnt=0) -> None:
         hash_calculators = {
-            "x": rand(), "y": rand(), "z": rand(), "v": rand(), "w": rand(),
-            "0": 0.0, "0.5": 0.5,
-            "pi": space["pi"], "pih": space["pih"], "tan": tan,
-            "1": 1.0, "2": 2.0, "+": hadd, "-": hsub, "*": hmul,
+            "pi": space["pi"], "pih": space["pih"], "tan": tan, "0.5": 0.5,
+            "1": 1.0, "2": 2.0, "+": hadd, "-": hsub, "*": hmul, "0": 0.0,
             "/": hpdiv, "log": hplog, "exp": hpexp, "sqrt": hpsqrt,
             "sq": hsq, "abs": abs, "neg": hneg, "sin": sin, "cos": cos,
         }
+        for k, v in space.items():
+            if k not in hash_calculators:
+                hash_calculators[k] = rand()
         for arr in [self.ts, self.tnts, self.onts]:
             for s in arr:
                 self.mapper[s[0]] = hash_calculators[s[0]]
