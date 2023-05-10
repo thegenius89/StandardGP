@@ -8,7 +8,6 @@ from StandardGP import GP
 
 
 def main() -> None:
-    # finding model for
     x = np.random.rand(200, 5) * 4 - 2
     y = np.sin(x[:, 0] * x[:, 0]) * np.cos(x[:, 1] - 1) * 188 - 243
     # y = plog(x[:, 0] + 1) + plog(x[:, 0] ** 2 + 1)
@@ -21,8 +20,8 @@ def main() -> None:
     # y = x[:, 0] ** 3 + x[:, 1] ** 3 - x[:, 1] - x[:, 0]
     # y = ((np.tan(x[:, 0]) / pexp(x[:, 1])) * (plog(x[:, 2]) - np.tan(x[:, 3])))
     gp = GP(x, y)
-    best, repr = gp.run(show=True)
-    print("Gen: {}, Fit: {}, Expr: {}".format(gp.gen, round(best, 9), repr))
+    best_fit, best_model = gp.run(show=True)
+    print("Epochs: {}, Fit: {}, Model: {}".format(gp.gen, best_fit, best_model))
     print("RMSE:", np.sqrt(np.mean(np.square(gp.predict(x) - y))))
 
 
