@@ -1,7 +1,7 @@
 # Copyright (c) 2023, Thure Foken.
 # All rights reserved.
 
-from multiprocessing import Process
+from multiprocessing import Process, Manager
 from numpy import argsort, arange, sum, max, average, fromiter
 from numpy import full, array, ndarray, where
 from numpy.random import choice
@@ -37,6 +37,7 @@ class GP:
         return Individual(self.cfg, self.gram, self.problem.tar)
 
     def init_pop(self) -> None:
+        # fill population with non-zero-fitness trees
         cnt = 0
         while cnt < self.ps:
             indi = self.new()
@@ -52,6 +53,8 @@ class GP:
         self.update_best(pos)
 
     def mutate_pop(self) -> None:
+        # mutation based on fitness
+        # the higher the fitness, the higher the probabillity to mutate
         sort_indices = argsort(self.fits)
         self.pop[:] = self.pop[sort_indices]
         self.fits[:] = self.fits[sort_indices]
@@ -82,10 +85,14 @@ class GP:
         sort_indices = argsort(self.fits)
         self.pop[:] = self.pop[sort_indices]
         self.fits[:] = self.fits[sort_indices]
+        # copy some of the best trees directly into the new population
+        # by overwriting the worst trees
         until = int(self.ps * self.cfg.elites)
         if until > 0:
             self.copy_elites(range(until))
             self.copy_elites(range(until, until * 2))
+        # swap subtrees between many individuals
+        # (more then 2 parents possible)
         size = int(self.ps * self.cfg.crossovers)
         if size == 0:
             return
@@ -129,10 +136,15 @@ class GP:
             self.best = self.fits[pos]
             indi = self.pop[pos]
             self.best_repr = indi.as_expression(indi.genome)
+            self.best_indi = self.new()
+            self.best_indi.copy(indi)
 
     def run(self, show=False) -> tuple:
+        return self.run_threaded(show)
+
+    def run_threaded(self, show=False) -> tuple:
         self.start = time()
-        self.best, self.best_repr = 0, ""
+        self.best, self.best_repr, self.best_indi = 0, "", self.new()
         gen, gens = 1, self.cfg.gens + 1
         for gen in range(1, gens):
             self.gen = gen
@@ -144,6 +156,8 @@ class GP:
             self.reproduction()
         if show:
             self.print_stats(gen)
+        self.best_indi.simplify().simplify().simplify()
+        self.best_repr = self.best_indi.as_expression(self.best_indi.genome)
         self.best_repr = self.problem.reconstruct_invariances(self.best_repr)
         return self.best, self.best_repr
 
