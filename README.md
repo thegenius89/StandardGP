@@ -22,10 +22,10 @@ best_fitness, best_model = gp.run(show=True)
 print("Generations: {}, Fitness: {}, Model: {}".format(gp.gen, best_fitness, best_model))
 print("RMSE:", np.sqrt(np.mean(np.square(gp.predict(x) - y))))
 ```
-You can see how huge your dataset can be wihtout losing performance by changing the 200 to say 2000.
+You can see how huge your dataset can be without losing performance by changing the 200 to say 2000.
 
 ## Advanced usage:
-All the hyperparameters are very good choosen so for many cases there is no need to adjust them.
+All the hyperparameters are very good choosen - for many cases there is no need to adjust them.
 The [...,...] are recommanded ranges.
 ```
 class Config:
@@ -44,4 +44,4 @@ class Config:
 ## Coming soon
 - Full vectorized GP-Operators that are easy to automatically adapt
 - Visualisation of evolved Operators
-- There are just 500 lines of code  and it will be reduced to around 250 lines for easy understanding and experimenting with new operators
+- There are just 500 lines of code and it will be reduced to around 250 lines for easy understanding and experimenting with new operators
