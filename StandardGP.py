@@ -19,10 +19,10 @@ class GP:
     crossovers = 0
     cx_rejected = 0
 
-    def __init__(self, problem):
+    def __init__(self, x, y):
         self.cfg = Config()
-        self.problem = TreeFunction(self.cfg, problem, self.cfg.probl_size)
-        self.gram = TreeGrammar(self.cfg, self.problem.namespace)
+        self.problem = TreeFunction(x, y, self.cfg)
+        self.gram = TreeGrammar(self.cfg, self.problem)
         self.ps = self.cfg.pop_size
         self.gen = 0
         self.pop = array([self.new() for i in range(self.ps)])
@@ -144,7 +144,10 @@ class GP:
             self.reproduction()
         if show:
             self.print_stats(gen)
-        repr = self.best_repr
-        if self.cfg.linregress:
-            repr = self.problem.reconstruct_invariances(repr)
-        return self.best, repr
+        self.best_repr = self.problem.reconstruct_invariances(self.best_repr)
+        return self.best, self.best_repr
+
+    def predict(self, x) -> ndarray:
+        for input in range(x.T.shape[0]):
+            self.problem.namespace["x{}".format(input)] = x.T[input]
+        return eval(self.best_repr, self.problem.namespace)
