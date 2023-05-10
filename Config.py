@@ -11,7 +11,6 @@ class Config:
         self.mutations     = 0.09   # [0, 1.0] probabillity per tree per gen
         self.high_pressure = 0.9    # [0.1, 4.0] rank exponent - pick
         self.low_pressure  = 0.3    # [0.1, 4.0] rank exponent - spread
-        self.probl_size    = 200    # [1, n] data points
         self.pop_size      = 4000   # [1, n] number of trees
         self.grow_limit    = 4      # [2, n] how fast individuals can grow
         self.max_nodes     = 24     # [8, n] max nodes per tree
