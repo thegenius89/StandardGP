@@ -38,7 +38,7 @@ class Individual:
         self.genome = self.rand_tree(Node(None), min_d=min_d)
         self.tree_cnt = self.genome.node_cnt
         self.tar = tar
-        self.probl_size = cfg.probl_size
+        self.probl_size = grammar.problem.size
         self.hash = self.genome.hash
 
     def get_fit(self, gen) -> float:
