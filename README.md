@@ -48,11 +48,12 @@ class Config:
     pi, pi/2, e, 1, 2, 0, 0.5
 
 ## Coming tomorrow
-- Multiprocessing search (already done)
+- Multiprocessing search
 - All classes functions and variables get better names
-- Benchmark comparison
+- Benchmark comparison between GP variants
+- Real world dataset examples
 
 ## Coming soon
 - Full vectorized GP-Operators that are easy to automatically adapt
 - Visualisation of evolved operators
-- There are just 500 lines of code and it will be reduced to around 250 lines for easy understanding and experimenting with new operators
+- A full vectorized version will just contain 200 lines of algorithmic code instead of 500
