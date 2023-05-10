@@ -1,7 +1,7 @@
 # StandardGP
 StandardGP is a genetic programming regression algorithm based on original GP operators.
-There is a huge debate what StandardGP can do on its own and what all the new linear and hybrid variants can do better or worse.
-To provide a comparison algorithm between new GP variants and StandardGP - this is an easy to use pure Python SGP algorithm.
+To provide a comparison algorithm between new linear GP variants and StandardGP - this is an easy to use pure Python SGP algorithm.
+The goal of this project is to get a better understanding of GP algorithms through visualizations.
 
 ## Features
  - True vectorized fitness evaluation
@@ -44,5 +44,5 @@ class Config:
 
 ## Coming soon
 - Full vectorized GP-Operators that are easy to automatically adapt
-- Visualisation of evolved Operators
+- Visualisation of evolved operators
 - There are just 500 lines of code and it will be reduced to around 250 lines for easy understanding and experimenting with new operators
