@@ -43,6 +43,7 @@ class TreeGrammar:
             self.rand_nodes[s] = cycle([randint(0, s - 1) for _ in range(59)])
 
     def add_keys(self, space, cnt=0) -> None:
+        # topological hash calculation functions
         hash_calculators = {
             "pi": space["pi"], "pih": space["pih"], "tan": tan, "0.5": 0.5,
             "1": 1.0, "2": 2.0, "+": hadd, "-": hsub, "*": hmul, "0": 0.0,
