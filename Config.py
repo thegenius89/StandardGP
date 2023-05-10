@@ -13,11 +13,10 @@ class Config:
         self.low_pressure  = 0.3    # [0.1, 4.0] rank exponent - spread
         self.probl_size    = 200    # [1, n] data points
         self.pop_size      = 4000   # [1, n] number of trees
-        self.grow_limit    = 6      # [2, n] how fast individuals can grow
-        self.max_nodes     = 48     # [8, n] max nodes per tree
+        self.grow_limit    = 4      # [2, n] how fast individuals can grow
+        self.max_nodes     = 24     # [8, n] max nodes per tree
         self.operators     = 0.2    # [0, 0.4] probabillity to select operator
         self.functions     = 0.2    # [0, 0.4] probabillity to select function
         self.noise         = 0.000  # make the dataset noisy
         self.debug_pop     = False  # pick a sample and show while running
         self.constants     = True   # insert random variables
-        self.linregress    = True   # reconstruct invariances (uses scipy)
