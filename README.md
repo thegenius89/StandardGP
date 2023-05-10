@@ -42,6 +42,10 @@ class Config:
         self.constants     = True   # insert random variables
 ```
 
+## Coming tomorrow
+- Multiprocessing search (already done)
+- All classes functions and variables get better names
+- 
 ## Coming soon
 - Full vectorized GP-Operators that are easy to automatically adapt
 - Visualisation of evolved operators
