@@ -16,7 +16,7 @@ The goal of this project is to get a better understanding of GP algorithms throu
 import numpy as np
 from StandardGP import GP
 
-x = np.random.rand(200, 5) * 2
+x = np.random.rand(200, 5) * 4 - 2
 y = np.sin(x[:, 0] * x[:, 0]) * np.cos(x[:, 1] - 1) * 188 - 243
 gp = GP(x, y)
 best_fitness, best_model = gp.run(show=True)
@@ -45,7 +45,8 @@ class Config:
 ## Coming tomorrow
 - Multiprocessing search (already done)
 - All classes functions and variables get better names
-- 
+- Benchmark comparison
+
 ## Coming soon
 - Full vectorized GP-Operators that are easy to automatically adapt
 - Visualisation of evolved operators
