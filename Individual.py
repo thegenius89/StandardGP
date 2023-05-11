@@ -30,15 +30,15 @@ class Individual:
     tree_cache = {}
     subtree_cache = {}
 
-    def __init__(self, cfg, grammar, tar: ndarray, min_d=2):
-        self.gram = grammar
-        self.map = self.gram.mapper
+    def __init__(self, cfg, space, min_d=2):
+        self.space = space
+        self.map = self.space.mapper
         self.cfg = cfg
         self.node_refs = {}
         self.genome = self.rand_tree(Node(None), min_d=min_d)
         self.tree_cnt = self.genome.node_cnt
-        self.tar = tar
-        self.probl_size = grammar.problem.size
+        self.target = space.target
+        self.probl_size = space.size
         self.hash = self.genome.hash
 
     # fitness with reduced function space <
@@ -56,7 +56,7 @@ class Individual:
         if norm_arr == 0:
             Individual.tree_cache[self.hash] = 0
             return 0
-        error = add.reduce((self.tar - (pred / norm_arr)) ** 2)
+        error = add.reduce((self.target - (pred / norm_arr)) ** 2)
         fit = 1 - (error / self.probl_size)
         Individual.unique_fits[fit] += 1
         Individual.tree_cache[self.hash] = fit
@@ -85,7 +85,7 @@ class Individual:
     # creates a new random tree <
     def rand_tree(self, root: Node, min_d=2, max_d=4) -> Node:
         if random() < self.cfg.operators and max_d > 1:
-            root.label, root.value = next(self.gram.tnts_iter)
+            root.label, root.value = next(self.space.tnts_iter)
             root.left = self.rand_tree(Node(root), min_d - 1, max_d - 1)
             root.right = self.rand_tree(Node(root), min_d - 1, max_d - 1)
             root.node_cnt += root.left.node_cnt + root.right.node_cnt
@@ -93,7 +93,7 @@ class Individual:
             root.hash_r = root.right.hash
             root.hash = self.map[root.label](root.hash_l, root.hash_r)
         elif random() < self.cfg.functions and max_d > 1:
-            root.label, root.value = next(self.gram.onts_iter)
+            root.label, root.value = next(self.space.onts_iter)
             root.left = self.rand_tree(Node(root), min_d - 1, max_d - 1)
             root.node_cnt += root.left.node_cnt
             root.hash_l = root.left.hash
@@ -102,7 +102,7 @@ class Individual:
             if min_d > 1:
                 self.rand_tree(root, min_d, max_d)
                 return root
-            root.label, root.value = next(self.gram.ts_iter)
+            root.label, root.value = next(self.space.ts_iter)
             root.hash = self.map[root.label]
             if self.cfg.constants and random() < 0.08:
                 root.value = round(random() * 10, 1)
@@ -159,7 +159,7 @@ class Individual:
 
     # genetic operators <
     def subtree_mutate(self) -> None:
-        pos = next(self.gram.rand_nodes[self.tree_cnt])
+        pos = next(self.space.rand_nodes[self.tree_cnt])
         node = list(self.node_refs.values())[pos]
         parent = node.parent
         new_node = self.rand_tree(Node(parent), min_d=2)
@@ -176,7 +176,7 @@ class Individual:
         self.fix_hashs(new_node)
 
     def crossover(self, other) -> bool:
-        rng = self.gram.rand_nodes
+        rng = self.space.rand_nodes
         own_nodes = list(self.node_refs.values())
         other_nodes = list(other.node_refs.values())
         maxi = self.cfg.max_nodes
@@ -190,21 +190,21 @@ class Individual:
             new_size_1 = self.tree_cnt + subt_2.node_cnt - subt_1.node_cnt
             new_size_2 = other.tree_cnt + subt_1.node_cnt - subt_2.node_cnt
             if subt_1.node_cnt == 1 or subt_2.node_cnt == 1:
-                pass # not allowed because no internal nodes
+                pass  # not allowed because no internal nodes
             elif subt_1.hash == subt_2.hash:
-                pass # not allowed because there is no effect except blow
+                pass  # not allowed because there is no effect except blow
             elif new_size_1 < 3:
-                pass # result would be too small
+                pass  # result would be too small
             elif new_size_2 < 3:
-                pass # result would be too small
+                pass  # result would be too small
             elif new_size_1 >= maxi:
-                pass # result would be too large
+                pass  # result would be too large
             elif new_size_2 >= maxi:
-                pass # result would be too large
+                pass  # result would be too large
             elif abs(new_size_1 - new_size_2) > self.cfg.grow_limit:
-                pass # results would grow too fast
+                pass  # results would grow too fast
             else:
-                break # found a node
+                break  # found a node
             if cnt > 8:
                 return False
             cnt += 1
