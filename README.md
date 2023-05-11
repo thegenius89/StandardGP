@@ -58,9 +58,12 @@ gp = GP(x, y, cfg={"mutations": 0.25, ...})
     sin, cos, tan, exp, sqrt, log, abs, neg, square
     pi, pi/2, e, 1, 2, 0, 0.5
 
-## Coming tomorrow
-- Real world dataset examples
-- Benchmark comparison between GP variants
+## Coming
+- register Repo for the "Living Benchmark Suite"
+- pip isntall
+- cache limit to not blow your machine
+- output thread
+- simplify last model
  
 ## Coming soon
 - Full vectorized GP-Operators that are easy to automatically adapt
