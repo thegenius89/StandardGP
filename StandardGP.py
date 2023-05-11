@@ -7,10 +7,32 @@ from numpy import full, array, ndarray, where
 from numpy.random import choice
 from time import time
 
-from Config import Config
-from TreeFunction import TreeFunction
-from TreeGrammar import TreeGrammar
 from Individual import Individual
+from SearchSpace import SearchSpace
+
+
+class Config:
+
+    def __init__(self):
+        self.precision     = 0.99999999
+        self.gens          = 100    # [1, n] after 100 gens a solution is rare
+        self.elites        = 0.07   # [0, 0.5] elite copies per gen
+        self.crossovers    = 0.60   # [0, 2.0] inplace crossover on population
+        self.mutations     = 0.09   # [0, 1.0] probabillity per tree per gen
+        self.high_pressure = 0.9    # [0.1, 4.0] rank exponent - pick
+        self.low_pressure  = 0.3    # [0.1, 4.0] rank exponent - spread
+        self.pop_size      = 4000   # [1, n] number of trees
+        self.grow_limit    = 4      # [2, n] how fast individuals can grow
+        self.max_nodes     = 24     # [8, n] max nodes per tree
+        self.operators     = 0.2    # [0, 0.4] probabillity to select operator
+        self.functions     = 0.2    # [0, 0.4] probabillity to select function
+        self.noise         = 0.000  # make the dataset noisy
+        self.debug_pop     = False  # pick a sample and show while running
+        self.constants     = True   # insert random variables
+
+    def update(self, cfg):
+        for k, v in cfg.items():
+            setattr(self, k, v)
 
 
 class GP:
@@ -19,10 +41,10 @@ class GP:
     crossovers = 0
     cx_rejected = 0
 
-    def __init__(self, x, y):
+    def __init__(self, x, y, cfg={}):
         self.cfg = Config()
-        self.problem = TreeFunction(x, y, self.cfg)
-        self.gram = TreeGrammar(self.cfg, self.problem)
+        self.cfg.update(cfg)
+        self.space = SearchSpace(x, y, self.cfg)
         self.ps = self.cfg.pop_size
         self.gen = 0
         self.pop = array([self.new() for i in range(self.ps)])
@@ -34,7 +56,7 @@ class GP:
         self.init_pop()
 
     def new(self) -> Individual:
-        return Individual(self.cfg, self.gram, self.problem.tar)
+        return Individual(self.cfg, self.space)
 
     def init_pop(self) -> None:
         # fill population with non-zero-fitness trees
@@ -158,10 +180,10 @@ class GP:
             self.print_stats(gen)
         self.best_indi.simplify().simplify().simplify()
         self.best_repr = self.best_indi.as_expression(self.best_indi.genome)
-        self.best_repr = self.problem.reconstruct_invariances(self.best_repr)
+        self.best_repr = self.space.reconstruct_invariances(self.best_repr)
         return self.best, self.best_repr
 
     def predict(self, x) -> ndarray:
         for input in range(x.T.shape[0]):
-            self.problem.namespace["x{}".format(input)] = x.T[input]
-        return eval(self.best_repr, self.problem.namespace)
+            self.space.space["x{}".format(input)] = x.T[input]
+        return eval(self.best_repr, self.space.space)
