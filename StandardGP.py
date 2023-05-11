@@ -30,9 +30,17 @@ class Config:
         self.debug_pop     = False  # pick a sample and show while running
         self.constants     = True   # insert random variables
 
-    def update(self, cfg):
-        for k, v in cfg.items():
-            setattr(self, k, v)
+    def update(self, cfg) -> None:
+        if isinstance(cfg, Config):
+            self = cfg
+        if isinstance(cfg, dict):
+            for k, v in cfg.items():
+                setattr(self, k, v)
+
+
+def run_wrapper(gp, shared_dict) -> None:
+    gp = GP(gp[0], gp[1], gp[2])
+    gp.run_threaded(shared_dict)
 
 
 class GP:
@@ -148,7 +156,11 @@ class GP:
         print("Best expr     :", self.best_repr)
         print()
 
-    def termination(self, gen: int) -> bool:
+    def termination(self, gen: int, shared_dict: dict) -> bool:
+        # found solution with given precision on another core
+        if self.update_dict(shared_dict):
+            return True
+        # found solution with given precision
         if self.best >= self.cfg.precision:
             return True
         return False
@@ -161,10 +173,33 @@ class GP:
             self.best_indi = self.new()
             self.best_indi.copy(indi)
 
-    def run(self, show=False) -> tuple:
-        return self.run_threaded(show)
+    def run(self, show=False, threads=1) -> tuple:
+        # run single threaded
+        if threads <= 1:
+            return self.run_threaded({}, show=show, simplify=True)
+        # run multiple instances and stop if any solution is found
+        shared_dict = Manager().dict()
+        processes = []
+        for i in range(threads):
+            p = Process(
+                target=run_wrapper,
+                args=(
+                    (self.space.x_train.T, self.space.y_train, self.cfg),
+                    shared_dict,
+                )
+            )
+            processes.append(p)
+            p.start()
+        [p.join() for p in processes]
+        self.best = shared_dict["best"]
+        self.best_repr = shared_dict["repr"]
+        self.gen = shared_dict["gen"]
+        self.best_indi = shared_dict["indi"]
+        print("Original model:", self.best_repr)
+        self.simplify_last_model()
+        return self.best, self.best_repr
 
-    def run_threaded(self, show=False) -> tuple:
+    def run_threaded(self, shared_dict, show=False, simplify=False) -> tuple:
         self.start = time()
         self.best, self.best_repr, self.best_indi = 0, "", self.new()
         gen, gens = 1, self.cfg.gens + 1
@@ -172,16 +207,37 @@ class GP:
             self.gen = gen
             if (gen % (int(gens / 10) + 1) == 0) and show:
                 self.print_stats(gen)
-            if self.termination(gen):
+            if self.termination(gen, shared_dict):
                 break
             self.mutate_pop()
             self.reproduction()
         if show:
             self.print_stats(gen)
+        if simplify:
+            self.simplify_last_model()
+        self.update_dict(shared_dict)
+        return self.best, self.best_repr
+
+    def simplify_last_model(self) -> None:
         self.best_indi.simplify().simplify().simplify()
         self.best_repr = self.best_indi.as_expression(self.best_indi.genome)
         self.best_repr = self.space.reconstruct_invariances(self.best_repr)
-        return self.best, self.best_repr
+
+    def update_dict(self, shared_dict) -> bool:
+        if "best" in shared_dict:
+            if self.best > shared_dict["best"]:
+                shared_dict["best"] = self.best
+                shared_dict["repr"] = self.best_repr
+                shared_dict["gen"] = self.gen
+                shared_dict["indi"] = self.best_indi
+        else:
+            shared_dict["best"] = self.best
+            shared_dict["repr"] = self.best_repr
+            shared_dict["gen"] = self.gen
+            shared_dict["indi"] = self.best_indi
+        if shared_dict["best"] >= self.cfg.precision:
+            return True
+        return False
 
     def predict(self, x) -> ndarray:
         for input in range(x.T.shape[0]):
