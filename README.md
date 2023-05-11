@@ -60,6 +60,7 @@ gp = GP(x, y, cfg={"mutations": 0.25, ...})
 
 ## Coming
 - register Repo for the "Living Benchmark Suite"
+  [https://github.com/cavalab/srbench](https://github.com/cavalab/srbench)
 - pip isntall
 - cache limit to not blow your machine
 - output thread
