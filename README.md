@@ -1,3 +1,4 @@
+<html>
 <head>
 <meta name="google-site-verification" content="O0VCZ4RSpoJQ-lD0PgLqruxw8QYePHl5jxtbAVEgF60" />
 </head>
@@ -64,3 +65,4 @@ class Config:
 - A full vectorized version will just contain 200 lines of algorithmic code instead of 500
 
 </body>
+</html>
