@@ -47,7 +47,7 @@ class SearchSpace:
         self.onts_iter = cycle([choice(self.onts) for _ in range(1069)])
         self.rand_nodes = {}
         for s in range(1, self.cfg.max_nodes * 2):
-            self.rand_nodes[s] = cycle([randint(0, s - 1) for _ in range(59)])
+            self.rand_nodes[s] = cycle([randint(0, s - 1) for _ in range(119)])
 
     def normalize(self, pred: ndarray) -> ndarray:
         pred = pred - add.reduce(pred) / self.size
