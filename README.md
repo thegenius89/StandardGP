@@ -47,7 +47,11 @@ class Config:
         self.max_nodes     = 24     # [8, n] max nodes per tree
         self.constants     = True   # insert random variables
 ```
-
+Just pass a config to the GP
+```
+gp = GP(x, y, cfg={"mutations": 0.25, ...})
+```
+ 
 ## Supported Operators/Functions/Constants
     +, -, *, /, %
     sin, cos, tan, exp, sqrt, log, abs, neg, square
@@ -63,6 +67,14 @@ class Config:
 - Full vectorized GP-Operators that are easy to automatically adapt
 - Visualisation of evolved operators
 - A full vectorized version will just contain 200 lines of algorithmic code instead of 500
+- Allowing dynamic hyperparameter like mutation rates that depends on position and generation -> cfg={"mutations": lambda p, g: 1 / p * sin(g)}
 
+## Visions
+GP will one day be able to find optimal Neural Network architectures, many equivalent forms of Einsteins
+field equation and Schrödingers equation that are very interesting to study or may be able to find solutions
+to fundamental mathematical questions. Once there are operators that work globally for all problems to navigate a
+search through the infinite function space to find near optimal solutions the GP algorithms will alter
+its own algorithms to find even better and novel approaches to problems.
+ 
 </body>
 </html>
