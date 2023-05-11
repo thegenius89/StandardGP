@@ -178,7 +178,9 @@ class GP:
         if threads <= 1:
             return self.run_threaded({}, show=show, simplify=True)
         # run multiple instances and stop if any solution is found
-        shared_dict = Manager().dict()
+        shared_dict = Manager().dict({
+            "best": 0, "repr": "", "gen": 0, "indi": "",
+        })
         processes = []
         for i in range(threads):
             p = Process(
@@ -224,13 +226,7 @@ class GP:
         self.best_repr = self.space.reconstruct_invariances(self.best_repr)
 
     def update_dict(self, shared_dict) -> bool:
-        if "best" in shared_dict:
-            if self.best > shared_dict["best"]:
-                shared_dict["best"] = self.best
-                shared_dict["repr"] = self.best_repr
-                shared_dict["gen"] = self.gen
-                shared_dict["indi"] = self.best_indi
-        else:
+        if self.best > shared_dict["best"]:
             shared_dict["best"] = self.best
             shared_dict["repr"] = self.best_repr
             shared_dict["gen"] = self.gen
