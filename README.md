@@ -12,6 +12,7 @@ The goal of this project is to get a better understanding of GP algorithms throu
 ## Features
  - True vectorized fitness evaluation
  - Blow control without fitness intervention via stable Crossover
+ - Multithreaded optimization
  - Subtree-Cache that includes the isomorphism between functions
  - Subtree-Mutation based on fitness
  - Subtree-Crossover determines a good internal node based on tree-size
@@ -58,7 +59,6 @@ gp = GP(x, y, cfg={"mutations": 0.25, ...})
     pi, pi/2, e, 1, 2, 0, 0.5
 
 ## Coming tomorrow
-- Multiprocessing search
 - Real world dataset examples
 - Benchmark comparison between GP variants
  
