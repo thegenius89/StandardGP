@@ -59,14 +59,13 @@ gp = GP(x, y, cfg={"mutations": 0.25, ...})
 
 ## Coming tomorrow
 - Multiprocessing search
-- All classes functions and variables get better names
-- Benchmark comparison between GP variants
 - Real world dataset examples
-
+- Benchmark comparison between GP variants
+ 
 ## Coming soon
 - Full vectorized GP-Operators that are easy to automatically adapt
 - Visualisation of evolved operators
-- A full vectorized version will just contain 200 lines of algorithmic code instead of 500
+- A full vectorized version will just contain 250 lines of algorithmic code instead of 500
 - Allowing dynamic hyperparameter like mutation rates that depends on position and generation -> cfg={"mutations": lambda p, g: 1 / p * sin(g)}
 
 ## Visions
