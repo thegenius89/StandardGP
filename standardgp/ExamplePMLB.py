@@ -1,8 +1,8 @@
-from pmlb import fetch_data  # pip install pmlb
+from pmlb import fetch_data
 
 import numpy as np
 
-from GP import GP
+from standardgp import GP
 
 
 def get_data(dataset_name) -> np.ndarray:
@@ -20,7 +20,7 @@ def get_data(dataset_name) -> np.ndarray:
 if __name__ == "__main__":
     GP.seed(149)
     # example for regression tasks
-    # see all regression datasets available at
+    # see all regression datasets available at:
     # https://epistasislab.github.io/pmlb/
     x, y = get_data("yeast")
     gp = GP(x[::2, :], y[::2])  # half of the data to train

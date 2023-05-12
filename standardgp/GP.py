@@ -7,12 +7,9 @@ from numpy import full, array, ndarray, where
 from numpy.random import choice
 from time import time, sleep
 
-try:
-    from standardgp.Individual import Individual
-    from standardgp.SearchSpace import SearchSpace
-except Exception:
-    from Individual import Individual
-    from SearchSpace import SearchSpace
+from Individual import Individual
+from SearchSpace import SearchSpace
+
 
 class Config:
 

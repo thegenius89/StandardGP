@@ -1,10 +1,10 @@
 import numpy as np
 
-from GP import GP
+from standardgp import GP
 
 
 if __name__ == "__main__":
-    GP.seed(121)
+    # GP.seed(121)
     # StandardGP is able to find them all exactly
     x = np.random.rand(200, 5) * 4 - 2
     y = np.sin(x[:, 0] * x[:, 0]) * np.cos(x[:, 1] - 1) * 188 - 243
@@ -17,6 +17,6 @@ if __name__ == "__main__":
     # x = np.random.rand(200, 5) * 2
     # y = ((np.tan(x[:, 0]) / np.exp(x[:, 1])) * (np.log(x[:, 2]) - np.tan(x[:, 3])))
     gp = GP(x, y)
-    best_fit, model = gp.run(show=True, threads=8)
+    best_fit, model = gp.run(show=True, threads=1)
     print("Epochs: {}, Fit: {}, Model: {}".format(gp.gen, best_fit, model))
     print("RMSE:", np.sqrt(np.mean(np.square(gp.predict(x) - y))))

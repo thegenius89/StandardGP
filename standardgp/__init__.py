@@ -1,2 +1,1 @@
-from standardgp.Individual import Individual
-from standardgp.SearchSpace import SearchSpace
+from standardgp.GP import GP
