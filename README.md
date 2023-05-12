@@ -19,7 +19,7 @@ The goal of this project is to get a better understanding of GP algorithms throu
  - Function-space reduction via scale and location invariance
 
 ## Usage:
-```
+```python
 import numpy as np
 from StandardGP import GP
 
@@ -35,7 +35,7 @@ You can see how huge your dataset can be without losing performance by changing 
 ## Advanced usage:
 All the hyperparameters are very good chosen - for many cases there is no need to adjust them.
 The [...,...] are recommended ranges.
-```
+```python
 class Config:
     def __init__(self):
         self.precision     = 0.99999999
@@ -49,7 +49,7 @@ class Config:
         self.constants     = True   # insert random variables
 ```
 Just pass a config to the GP
-```
+```python
 gp = GP(x, y, cfg={"mutations": 0.25, ...})
 ```
  
@@ -60,6 +60,7 @@ gp = GP(x, y, cfg={"mutations": 0.25, ...})
 
 ## Coming
 - register Repo for the "Living Benchmark Suite"
+  [https://github.com/cavalab/srbench](https://github.com/cavalab/srbench)
 - pip isntall
 - cache limit to not blow your machine
 - output thread
