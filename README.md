@@ -18,6 +18,13 @@ The goal of this project is to get a better understanding of GP algorithms throu
  - Subtree-Crossover determines a good internal node based on tree-size
  - Function-space reduction via scale and location invariance
 
+## Install:
+```bash
+git clone https://github.com/thegenius89/StandardGP.git
+cd StandardGP
+python setup.py install
+```
+
 ## Usage:
 ```python
 import numpy as np
