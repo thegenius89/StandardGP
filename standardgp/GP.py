@@ -7,9 +7,12 @@ from numpy import full, array, ndarray, where
 from numpy.random import choice
 from time import time, sleep
 
-from Individual import Individual
-from SearchSpace import SearchSpace
-
+try:
+    from standardgp.Individual import Individual
+    from standardgp.SearchSpace import SearchSpace
+except Exception:
+    from Individual import Individual
+    from SearchSpace import SearchSpace
 
 class Config:
 
@@ -39,7 +42,9 @@ class Config:
                 setattr(self, k, v)
 
 
-def run_wrapper(gp, shared_dict) -> None:
+def run_wrapper(gp, shared_dict, seed) -> None:
+    if seed != 0:
+        GP.seed(seed)
     gp = GP(gp[0], gp[1], gp[2])
     gp.run_threaded(shared_dict)
 
@@ -58,6 +63,7 @@ class GP:
     mutations = 0
     crossovers = 0
     cx_rejected = 0
+    init_seed = 0
 
     def __init__(self, x, y, cfg={}):
         self.cfg = Config()
@@ -72,6 +78,14 @@ class GP:
         exp_ranks = arange(1, self.ps + 1) ** self.cfg.low_pressure
         self.lower_sel_probs = exp_ranks / sum(exp_ranks)
         self.init_pop()
+
+    @staticmethod
+    def seed(value: int) -> None:
+        from numpy.random import seed
+        from random import seed as std_lib_seed
+        seed(value)
+        std_lib_seed(value)
+        GP.init_seed = value
 
     def new(self) -> Individual:
         return Individual(self.cfg, self.space)
@@ -200,7 +214,7 @@ class GP:
                 target=run_wrapper,
                 args=(
                     (self.space.x_train.T, self.space.y_train, self.cfg),
-                    shared_dict,
+                    shared_dict, GP.init_seed * (i + 1),
                 )
             )
             processes.append(p)

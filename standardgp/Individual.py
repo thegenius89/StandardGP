@@ -35,6 +35,7 @@ class Individual:
         self.map = self.space.mapper
         self.cfg = cfg
         self.node_refs = {}
+        assert cfg.operators > 0.05 or cfg.functions > 0.05
         self.genome = self.rand_tree(Node(None), min_d=min_d)
         self.tree_cnt = self.genome.node_cnt
         self.target = space.target
@@ -46,10 +47,10 @@ class Individual:
         cfg = self.cfg
         maxi = cfg.max_nodes
         size = self.tree_cnt
-        if size >= maxi or size < 3:
-            return 0
         if self.hash in Individual.tree_cache:
             return Individual.tree_cache[self.hash]
+        if size >= maxi or size < 3:
+            return 0
         pred = self.parse(self.genome)
         pred = pred - add.reduce(pred) / self.probl_size
         norm_arr = (add.reduce(pred * pred) ** 0.5)
@@ -277,6 +278,8 @@ class Individual:
         else:
             subt_1 = self.as_expression(root.left, expr)
             subt_2 = self.as_expression(root.right, expr)
+            if root.label == "/":
+                return "div(" + subt_1 + ", " + subt_2 + ")"
             return "(" + subt_1 + ")" + root.label + "(" + subt_2 + ")"
     # >
 
@@ -291,6 +294,8 @@ class Individual:
         elif root.left and not root.right:
             new_result = root.value(self.simplify_rec(root.left))
             if not isinstance(new_result, ndarray):
+                if root.parent is None:
+                    return root.value
                 self.remove_node(root, new_result)
             else:
                 if root.hash == root.left.hash:
@@ -300,6 +305,8 @@ class Individual:
             new_result = root.value(self.simplify_rec(root.left),
                                     self.simplify_rec(root.right))
             if not isinstance(new_result, ndarray):
+                if root.parent is None:
+                    return root.value
                 self.remove_node(root, new_result)
             else:
                 if root.hash == root.left.hash:
@@ -322,6 +329,8 @@ class Individual:
         self.fix_hashs(root)
 
     def remove_function(self, root, child) -> None:
+        if root.parent is None:
+            return
         del self.node_refs[child.id]
         self.fix_sizes(root, -1)
         root.node_cnt = child.node_cnt

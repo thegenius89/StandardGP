@@ -1,9 +1,10 @@
 import numpy as np
 
-from StandardGP import GP
+from GP import GP
 
 
 if __name__ == "__main__":
+    GP.seed(121)
     # StandardGP is able to find them all exactly
     x = np.random.rand(200, 5) * 4 - 2
     y = np.sin(x[:, 0] * x[:, 0]) * np.cos(x[:, 1] - 1) * 188 - 243

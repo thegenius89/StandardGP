@@ -2,7 +2,7 @@ from pmlb import fetch_data  # pip install pmlb
 
 import numpy as np
 
-from StandardGP import GP
+from GP import GP
 
 
 def get_data(dataset_name) -> np.ndarray:
@@ -18,6 +18,7 @@ def get_data(dataset_name) -> np.ndarray:
 
 
 if __name__ == "__main__":
+    GP.seed(149)
     # example for regression tasks
     # see all regression datasets available at
     # https://epistasislab.github.io/pmlb/
@@ -25,5 +26,6 @@ if __name__ == "__main__":
     gp = GP(x[::2, :], y[::2])  # half of the data to train
     best_fit, model = gp.run(show=True, threads=8)
     print("Epochs: {}, Fit: {}, Model: {}".format(gp.gen, best_fit, model))
+    print("RMSE train:", np.sqrt(np.mean(np.square(gp.predict(x) - y))))
     x, y = x[1::2, :], y[1::2]  # rest of the data to test on unknown data
-    print("RMSE:", np.sqrt(np.mean(np.square(gp.predict(x) - y))))
+    print("RMSE test:", np.sqrt(np.mean(np.square(gp.predict(x) - y))))
