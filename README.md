@@ -47,25 +47,23 @@ class Config:
         self.grow_limit    = 4      # [2, n] how fast individuals can grow
         self.max_nodes     = 24     # [8, n] max nodes per tree
         self.constants     = True   # insert random variables
+        self.cache_size    = 500000 # max ndarrays in cache
 ```
 Just pass a config to the GP
 ```python
 gp = GP(x, y, cfg={"mutations": 0.25, ...})
 ```
- 
+
 ## Supported Operators/Functions/Constants
     +, -, *, /, %
     sin, cos, tan, exp, sqrt, log, abs, neg, square
     pi, pi/2, e, 1, 2, 0, 0.5
 
 ## Coming
-- register Repo for the "Living Benchmark Suite"
+- register repo for the "Living Benchmark Suite"
   [https://github.com/cavalab/srbench](https://github.com/cavalab/srbench)
-- pip isntall
-- cache limit to not blow your machine
-- output thread
-- simplify last model
- 
+- pip install standardgp
+
 ## Coming soon
 - Full vectorized GP-Operators that are easy to automatically adapt
 - Visualisation of evolved operators
@@ -78,6 +76,6 @@ field equation and Schrödingers equation that are very interesting to study or 
 to fundamental mathematical questions. Once there are operators that work globally for all problems to navigate a
 search through the infinite function space to find near optimal solutions the GP algorithms will alter
 its own algorithms to find even better and novel approaches to problems.
- 
+
 </body>
 </html>
