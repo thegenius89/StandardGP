@@ -28,7 +28,7 @@ python setup.py install
 ## Usage:
 ```python
 import numpy as np
-from standardgp import GP
+from standardgp.GP import GP
 
 x = np.random.rand(200, 5) * 4 - 2
 y = np.sin(x[:, 0] * x[:, 0]) * np.cos(x[:, 1] - 1) * 188 - 243
