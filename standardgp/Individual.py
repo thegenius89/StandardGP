@@ -62,7 +62,7 @@ class Individual:
         Individual.tree_cache[self.hash] = fit
         return fit
 
-    def parse(self, root: Node) -> float:
+    def parse(self, root: Node) -> ndarray:
         if not root.left and not root.right:
             return root.value
         elif root.left and not root.right:
@@ -70,7 +70,8 @@ class Individual:
             if key in Individual.subtree_cache:
                 return Individual.subtree_cache[key]
             new_result = root.value(self.parse(root.left))
-            Individual.subtree_cache[key] = new_result
+            if len(Individual.subtree_cache) < self.cfg.cache_size:
+                Individual.subtree_cache[key] = new_result
             return new_result
         else:
             key = root.hash
@@ -78,7 +79,8 @@ class Individual:
                 return Individual.subtree_cache[key]
             new_result = root.value(self.parse(root.left),
                                     self.parse(root.right))
-            Individual.subtree_cache[key] = new_result
+            if len(Individual.subtree_cache) < self.cfg.cache_size:
+                Individual.subtree_cache[key] = new_result
             return new_result
     # >
 
@@ -290,12 +292,20 @@ class Individual:
             new_result = root.value(self.simplify_rec(root.left))
             if not isinstance(new_result, ndarray):
                 self.remove_node(root, new_result)
+            else:
+                if root.hash == root.left.hash:
+                    self.remove_function(root, root.left)
             return new_result
         else:
             new_result = root.value(self.simplify_rec(root.left),
                                     self.simplify_rec(root.right))
             if not isinstance(new_result, ndarray):
                 self.remove_node(root, new_result)
+            else:
+                if root.hash == root.left.hash:
+                    self.remove_function(root, root.left)
+                elif root.hash == root.right.hash:
+                    self.remove_function(root, root.right)
             return new_result
 
     def remove_node(self, root, new_const) -> None:
@@ -310,4 +320,17 @@ class Individual:
         root.hash_r = 0
         root.hash = new_const
         self.fix_hashs(root)
+
+    def remove_function(self, root, child) -> None:
+        del self.node_refs[child.id]
+        self.fix_sizes(root, -1)
+        root.node_cnt = child.node_cnt
+        root.left = child.left
+        root.right = child.right
+        root.value = child.value
+        root.label = child.label
+        if child.left:
+            child.left.parent = root
+        if child.right:
+            child.right.parent = root
     # >

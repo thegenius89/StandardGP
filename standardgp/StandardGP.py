@@ -5,7 +5,7 @@ from multiprocessing import Process, Manager
 from numpy import argsort, arange, sum, max, average, fromiter
 from numpy import full, array, ndarray, where
 from numpy.random import choice
-from time import time
+from time import time, sleep
 
 from Individual import Individual
 from SearchSpace import SearchSpace
@@ -15,20 +15,21 @@ class Config:
 
     def __init__(self):
         self.precision     = 0.99999999
-        self.gens          = 100    # [1, n] after 100 gens a solution is rare
-        self.elites        = 0.07   # [0, 0.5] elite copies per gen
-        self.crossovers    = 0.60   # [0, 2.0] inplace crossover on population
-        self.mutations     = 0.09   # [0, 1.0] probabillity per tree per gen
-        self.high_pressure = 0.9    # [0.1, 4.0] rank exponent - pick
-        self.low_pressure  = 0.3    # [0.1, 4.0] rank exponent - spread
-        self.pop_size      = 4000   # [1, n] number of trees
-        self.grow_limit    = 4      # [2, n] how fast individuals can grow
-        self.max_nodes     = 24     # [8, n] max nodes per tree
-        self.operators     = 0.2    # [0, 0.4] probabillity to select operator
-        self.functions     = 0.2    # [0, 0.4] probabillity to select function
-        self.noise         = 0.000  # make the dataset noisy
-        self.debug_pop     = False  # pick a sample and show while running
-        self.constants     = True   # insert random variables
+        self.gens          = 100     # [1, n] after 100 gens a solution is rare
+        self.elites        = 0.07    # [0, 0.5] elite copies per gen
+        self.crossovers    = 0.60    # [0, 2.0] inplace crossover on population
+        self.mutations     = 0.09    # [0, 1.0] probabillity per tree per gen
+        self.high_pressure = 0.9     # [0.1, 4.0] rank exponent - pick
+        self.low_pressure  = 0.3     # [0.1, 4.0] rank exponent - spread
+        self.pop_size      = 4000    # [1, n] number of trees
+        self.grow_limit    = 4       # [2, n] how fast individuals can grow
+        self.max_nodes     = 24      # [8, n] max nodes per tree
+        self.operators     = 0.2     # [0, 0.4] probabillity to select operator
+        self.functions     = 0.2     # [0, 0.4] probabillity to select function
+        self.noise         = 0.000   # make the dataset noisy
+        self.debug_pop     = False   # pick a sample and show while running
+        self.constants     = True    # insert random variables
+        self.cache_size    = 500000  # max ndarrays in cache
 
     def update(self, cfg) -> None:
         if isinstance(cfg, Config):
@@ -41,6 +42,15 @@ class Config:
 def run_wrapper(gp, shared_dict) -> None:
     gp = GP(gp[0], gp[1], gp[2])
     gp.run_threaded(shared_dict)
+
+
+def output_stream(shared_dict, cfg) -> None:
+    while not shared_dict["done"]:
+        if shared_dict["best"] >= cfg.precision:
+            break
+        print("Fit: {}, Model: {}".format(
+            shared_dict["best"], shared_dict["repr"]))
+        sleep(0.5)
 
 
 class GP:
@@ -175,11 +185,14 @@ class GP:
 
     def run(self, show=False, threads=1) -> tuple:
         # run single threaded
+        shared_dict = {
+            "best": 0, "repr": "", "gen": 0, "indi": "", "done": False,
+        }
         if threads <= 1:
-            return self.run_threaded({}, show=show, simplify=True)
+            return self.run_threaded(shared_dict, show=show, simplify=True)
         # run multiple instances and stop if any solution is found
         shared_dict = Manager().dict({
-            "best": 0, "repr": "", "gen": 0, "indi": "",
+            "best": 0, "repr": "", "gen": 0, "indi": "", "done": False,
         })
         processes = []
         for i in range(threads):
@@ -192,7 +205,11 @@ class GP:
             )
             processes.append(p)
             p.start()
+        printer = Process(target=output_stream, args=(shared_dict, self.cfg, ))
+        printer.start()
         [p.join() for p in processes]
+        shared_dict["done"] = True
+        printer.join()
         self.best = shared_dict["best"]
         self.best_repr = shared_dict["repr"]
         self.gen = shared_dict["gen"]
