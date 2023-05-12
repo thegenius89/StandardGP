@@ -21,7 +21,7 @@ The goal of this project is to get a better understanding of GP algorithms throu
 ## Usage:
 ```python
 import numpy as np
-from StandardGP import GP
+from standardgp import GP
 
 x = np.random.rand(200, 5) * 4 - 2
 y = np.sin(x[:, 0] * x[:, 0]) * np.cos(x[:, 1] - 1) * 188 - 243
