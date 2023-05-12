@@ -9,6 +9,8 @@ StandardGP is a genetic programming regression algorithm based on original GP op
 To provide a comparison algorithm between new linear GP variants and StandardGP - this is an easy to use pure Python SGP algorithm.
 The goal of this project is to get a better understanding of GP algorithms through visualizations.
 
+[![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
+
 ## Features
  - True vectorized fitness evaluation
  - Blow control without fitness intervention via stable Crossover
@@ -28,7 +30,7 @@ python setup.py install
 ## Usage:
 ```python
 import numpy as np
-from standardgp.GP import GP
+from standardgp import GP
 
 x = np.random.rand(200, 5) * 4 - 2
 y = np.sin(x[:, 0] * x[:, 0]) * np.cos(x[:, 1] - 1) * 188 - 243
