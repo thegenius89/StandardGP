@@ -8,70 +8,69 @@ from random import random
 
 class Node:
 
-    ID = 0
+    ID: int = 0
 
     def __init__(self, perent):
-        self.value    = 0
-        self.label    = ""
-        self.left     = None
-        self.right    = None
-        self.parent   = perent
-        self.hash_l   = 0
-        self.hash_r   = 0
-        self.hash     = 0
-        self.node_cnt = 1
-        self.id       = Node.ID
+        self.value: int    = 0
+        self.label: str    = ""
+        self.left: Node    = None
+        self.right: Node   = None
+        self.parent: Node  = perent
+        self.hash_l: float = 0.0
+        self.hash_r: float = 0.0
+        self.hash: float   = 0.0
+        self.node_cnt: int = 1
+        self.id: int       = Node.ID
         Node.ID += 1
 
 
 class Individual:
 
-    unique_fits = defaultdict(int)
-    tree_cache = {}
-    subtree_cache = {}
-    fit_calls = 0
+    unique_fits: defaultdict = defaultdict(int)
+    tree_cache: dict = {}
+    subtree_cache: dict = {}
+    fit_calls: int = 0
 
     def __init__(self, cfg, space, min_d=2):
-        self.space = space
-        self.map = self.space.mapper
-        self.cfg = cfg
-        self.node_refs = {}
-        self.const_prob = 1 / len(self.space.ts)
-        self.genome = self.rand_tree(Node(None), min_d=min_d)
-        self.tree_cnt = self.genome.node_cnt
-        self.target = space.target
-        self.probl_size = space.size
-        self.hash = self.genome.hash
+        self.space: SearchSpace = space
+        self.map: dict = self.space.mapper
+        self.cfg: dotdict = cfg
+        self.node_refs: dict = {}
+        self.const_prob: flaot = 1 / len(self.space.ts)
+        self.genome: Node = self.rand_tree(Node(None), min_d=min_d)
+        self.tree_cnt: int = self.genome.node_cnt
+        self.target: ndarray = space.target
+        self.probl_size: float = space.size
+        self.hash: float = self.genome.hash
 
     # fitness with reduced function space <
     def get_fit(self) -> float:
         Individual.fit_calls += 1
-        cfg = self.cfg
-        maxi = cfg.max_nodes
-        size = self.tree_cnt
+        cfg: dotdict = self.cfg
+        maxi: int = cfg.max_nodes
+        size: int = self.tree_cnt
         if self.hash in Individual.tree_cache:
             return Individual.tree_cache[self.hash]
         if size >= maxi or size < 3:
-            return 0
-        pred = self.parse(self.genome)
-        pred = pred - add.reduce(pred) / self.probl_size
-        norm_arr = (add.reduce(pred * pred) ** 0.5)
+            Individual.tree_cache[self.hash] = 1.0
+            return 1.0
+        pred: array = self.parse(self.genome)
+        pred: array = pred - add.reduce(pred) / self.probl_size
+        norm_arr: float = (add.reduce(pred * pred) ** 0.5)
         if norm_arr == 0:
-            Individual.tree_cache[self.hash] = 0
-            return 0
+            Individual.tree_cache[self.hash] = 1.0
+            return 1.0
         error = add.reduce((self.target - (pred / norm_arr)) ** 2)
-        fit = 1 - (error / (self.probl_size + 1))
+        fit: float = (error / (self.probl_size + 1))
         Individual.unique_fits[fit] += 1
         Individual.tree_cache[self.hash] = fit
-        if fit >= 1 - cfg.precision:
-            return fit
         return fit
 
     def parse(self, root: Node) -> ndarray:
         if not root.left and not root.right:
             return root.value
         elif root.left and not root.right:
-            key = root.hash
+            key: float = root.hash
             if key in Individual.subtree_cache:
                 return Individual.subtree_cache[key]
             new_result = root.value(self.parse(root.left))
@@ -79,7 +78,7 @@ class Individual:
                 Individual.subtree_cache[key] = new_result
             return new_result
         else:
-            key = root.hash
+            key: float = root.hash
             if key in Individual.subtree_cache:
                 return Individual.subtree_cache[key]
             new_result = root.value(self.parse(root.left),
@@ -121,7 +120,7 @@ class Individual:
 
     # repair tree after change for fast access and hash calculation <
     def fix_sizes(self, root: Node, diff: int) -> None:
-        next_par = root
+        next_par: Node = root
         while next_par.parent:
             next_par = next_par.parent
             next_par.node_cnt += diff
@@ -129,7 +128,7 @@ class Individual:
         assert self.tree_cnt == next_par.node_cnt
 
     def fix_hashs(self, root: Node) -> None:
-        n_p = root
+        n_p: Node = root
         while n_p.parent:
             n_p = n_p.parent
             if n_p.left and n_p.right:
@@ -166,13 +165,13 @@ class Individual:
 
     # genetic operators <
     def subtree_mutate(self) -> None:
-        pos = next(self.space.rand_nodes[self.tree_cnt])
-        node = list(self.node_refs.values())[pos]
-        maxi = self.cfg.max_nodes
+        pos: int = next(self.space.rand_nodes[self.tree_cnt])
+        node: Node = list(self.node_refs.values())[pos]
+        maxi: int = self.cfg.max_nodes
         if self.tree_cnt + 16 >= maxi * 3:
             return
-        parent = node.parent
-        new_node = self.rand_tree(Node(parent), min_d=2)
+        parent: Node = node.parent
+        new_node: Node = self.rand_tree(Node(parent), min_d=2)
         del self.node_refs[node.id]
         self.remove_refs(node)
         if parent is None:
@@ -186,17 +185,17 @@ class Individual:
         self.fix_hashs(new_node)
 
     def crossover(self, other) -> bool:
-        rng = self.space.rand_nodes
-        own_nodes = list(self.node_refs.values())
-        other_nodes = list(other.node_refs.values())
-        maxi = self.cfg.max_nodes
-        cnt = 0
+        rng: dict = self.space.rand_nodes
+        own_nodes: list = list(self.node_refs.values())
+        other_nodes: list = list(other.node_refs.values())
+        maxi: int = self.cfg.max_nodes
+        cnt: int = 0
         while True:
             # search for a good crossover node
-            pos_1 = next(rng[self.tree_cnt])
-            pos_2 = next(rng[other.tree_cnt])
-            subt_1 = own_nodes[pos_1]
-            subt_2 = other_nodes[pos_2]
+            pos_1: int = next(rng[self.tree_cnt])
+            pos_2: int = next(rng[other.tree_cnt])
+            subt_1: Node = own_nodes[pos_1]
+            subt_2: Node = other_nodes[pos_2]
             new_size_1 = self.tree_cnt + subt_2.node_cnt - subt_1.node_cnt
             new_size_2 = other.tree_cnt + subt_1.node_cnt - subt_2.node_cnt
             if subt_1.node_cnt == 1 or subt_2.node_cnt == 1:
@@ -214,9 +213,9 @@ class Individual:
             elif abs(new_size_1 - new_size_2) > 4:
                 pass  # results would grow too fast
             else:
-                break  # found a node
+                break  # found good nodes
             if cnt > 8:
-                return False
+                return False  # no crossover point found -> reject
             cnt += 1
         self.fix_refs(subt_2, other)
         other.fix_refs(subt_1, self)
@@ -267,10 +266,10 @@ class Individual:
             self.copy_rec(root.right, other.right)
 
     def copy(self, other) -> None:
-        self.node_refs = {}
-        self.tree_cnt = other.tree_cnt
-        self.hash = other.hash
-        self.genome.id = Node.ID
+        self.node_refs: dict = {}
+        self.tree_cnt: int = other.tree_cnt
+        self.hash: float = other.hash
+        self.genome.id: int = Node.ID
         Node.ID += 1
         self.copy_rec(self.genome, other.genome)
     # >
