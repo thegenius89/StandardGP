@@ -211,7 +211,7 @@ class Individual:
                 pass  # result would be too large
             elif new_size_2 >= maxi:
                 pass  # result would be too large
-            elif abs(new_size_1 - new_size_2) > 6:
+            elif abs(new_size_1 - new_size_2) > 4:
                 pass  # results would grow too fast
             else:
                 break  # found a node

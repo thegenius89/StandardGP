@@ -1,9 +1,15 @@
 # Copyright (c) 2023, Thure Foken.
 # All rights reserved.
 
+# meassure time
+# python -m cProfile -o out ExampleFunc.py
+# python -m pstats out
+# check code style
+# flake8 --ignore E221,E251 --exclude ./tests
+
 from multiprocessing import Process, Manager
 from numpy import argsort, arange, sum, max, average, fromiter
-from numpy import full, array, ndarray, where
+from numpy import full, array, ndarray, where, unique
 from numpy.random import choice
 from time import time, sleep
 
@@ -36,35 +42,37 @@ class dotdict(dict):
 class GP:
 
     cfg = dotdict({
-        "precision" : 1e-8,    # precision
-        "gens"      : 100,     # [1, n] after 100 gens a solution is rare
-        "elites"    : 0.07,    # [0, 0.5] elite copies per gen
-        "crossovers": 0.60,    # [0, 2.0] inplace crossover on population
-        "mutations" : 0.09,    # [0, 1.0] probabillity per tree per gen
-        "pop_size"  : 4000,    # [1, n] number of trees
+        "gens"      : 100,     # [1, n] stop after n generations
+        "pop_size"  : 4000,    # [1, n] number of trees in population
+        "elites"    : 0.15,    # [0, 0.5] % elite copies per generation
+        "crossovers": 0.60,    # [0, 2.0] % inplace crossover on population
+        "mutations" : 0.10,    # [0, 1.0] % probabillity per tree per gen
         "max_nodes" : 24,      # [8, n] max nodes per tree
-        "debug_pop" : False,   # pick a sample and show while running
-        "constants" : True,    # insert random variables
-        "cache_size": 500000,  # max ndarrays in cache
+        "cache_size": 500000,  # max ndarrays in cache (look at your RAM)
+        "precision" : 1e-8,    # precision termination condition
     })
 
-    mutations = 0
-    crossovers = 0
-    cx_rejected = 0
-    init_seed = 0
+    mutations: int = 0
+    crossovers: int = 0
+    cx_rejected: int = 0
+    init_seed: int = 0
 
     def __init__(self, x, y, cfg={}):
         self.cfg.update(cfg)
         self.space = SearchSpace(x, y, self.cfg)
-        self.ps = self.cfg.pop_size
-        self.gen = 0
-        self.pop = array([self.new() for i in range(self.ps)])
-        self.fits = full(self.ps, 0.0)
-        self.sizes = full(self.ps, 1)
+        self.ps: int = self.cfg.pop_size
+        self.gen: int = 0
+        self.pop: array = array([self.new() for i in range(self.ps)])
+        self.fits: array = full(self.ps, 0.0)
+        self.sizes: array = full(self.ps, 1)
         exp_ranks = arange(1, self.ps + 1) ** 0.9
-        self.sel_probs = exp_ranks / sum(exp_ranks)
+        self.sel_probs: array = exp_ranks / sum(exp_ranks)
         exp_ranks = arange(1, self.ps + 1) ** 0.3
-        self.lower_sel_probs = exp_ranks / sum(exp_ranks)
+        self.lower_sel_probs: array = exp_ranks / sum(exp_ranks)
+        self.until: int = int(self.ps * self.cfg.elites)
+        self.elite_range: indices = arange(self.ps - self.until, self.ps)
+        exp_ranks = arange(1, self.until + 1) ** 2.0
+        self.elite_probs: array = exp_ranks / sum(exp_ranks)
         self.init_pop()
 
     @staticmethod
@@ -80,7 +88,7 @@ class GP:
 
     def init_pop(self) -> None:
         # fill population with non-zero-fitness trees
-        cnt = 0
+        cnt: int = 0
         while cnt < self.ps:
             indi = self.new()
             fit = indi.get_fit()
@@ -99,23 +107,26 @@ class GP:
     def mutate_pop(self) -> None:
         # mutation based on fitness
         # the higher the fitness, the higher the probabillity to mutate
+        size: int = int(self.ps * self.cfg.mutations)
+        if size == 0:
+            return
         sort_fit = argsort(self.fits)
         self.pop[:] = self.pop[sort_fit]
         self.fits[:] = self.fits[sort_fit]
         self.sizes[:] = self.sizes[sort_fit]
-        size = int(self.ps * self.cfg.mutations)
-        if size == 0:
-            return
-        upper = choice(self.ps, p=self.sel_probs, size=size)
+        upper: indices = choice(self.ps, p=self.sel_probs, size=size)
         iter = map(lambda a: self.mutate(a), upper)
         fromiter(iter, None)
         GP.mutations += size
 
-    def copy_elites(self, indices: ndarray) -> None:
-        for c, i in enumerate(indices):
-            self.pop[i].copy(self.pop[self.ps - c - 1])
-            self.fits[i] = self.fits[self.ps - c - 1]
-            self.sizes[i] = self.sizes[self.ps - c - 1]
+    def copy_elites(self, until: int) -> None:
+        if until == 0:
+            return
+        copies = choice(self.elite_range, p=self.elite_probs, size=until)
+        for idx, elite in enumerate(copies):
+            self.pop[idx].copy(self.pop[elite])
+            self.fits[idx] = self.fits[elite]
+            self.sizes[idx] = self.sizes[elite]
 
     def cx(self, i: int, j: int) -> None:
         if self.pop[i].crossover(self.pop[j]):
@@ -132,40 +143,35 @@ class GP:
     def reproduction(self) -> None:
         # indices = where(self.sizes > average(self.sizes) * 1.5)[0]
         # self.fits[indices] = 0
-        sort_fit = argsort(self.fits)
+        sort_fit: indices = argsort(self.fits)
         self.pop[:] = self.pop[sort_fit]
         self.fits[:] = self.fits[sort_fit]
         self.sizes[:] = self.sizes[sort_fit]
         # copy some of the best trees directly into the new population
         # by overwriting the worst trees
-        until = int(self.ps * self.cfg.elites)
-        if until > 0:
-            self.copy_elites(range(until))
-            self.copy_elites(range(until, until * 2))
+        self.copy_elites(self.until)
         # swap subtrees between many individuals
         # (more then 2 parents possible)
-        size = int(self.ps * self.cfg.crossovers)
+        size: int = int(self.ps * self.cfg.crossovers)
         if size == 0:
             return
-        lower = choice(self.ps, p=self.sel_probs, size=size)
-        upper = choice(self.ps, p=self.lower_sel_probs, size=size)
-        idxs = where(lower != upper)[0]
+        lower: indices = choice(self.ps, p=self.sel_probs, size=size)
+        upper: indices = choice(self.ps, p=self.lower_sel_probs, size=size)
+        idxs: indices = where(lower != upper)[0]
         iter = map(lambda a, b: self.cx(a, b), lower[idxs], upper[idxs])
         fromiter(iter, None)
 
-    def print_stats(self, gen: int) -> None:
-        unique_fits = set(self.fits)
-        if self.cfg.debug_pop:
-            for i, indi in enumerate(choice(self.pop, 20)):
-                print(indi.as_expression(indi.genome))
-        print("Gen           :", gen)
+    def print_stats(self) -> None:
+        for i, indi in enumerate(choice(self.pop, 20)):
+            print(indi.as_expression(indi.genome))
+        print("Gen           :", self.gen)
         print("Mean          :", round(average(self.fits[self.fits != 0]), 5))
         print("Max           :", round(max(self.fits), 10))
         print("Fit calls     :", Individual.fit_calls)
         print("Unique exprs  :", len(Individual.tree_cache))
         print("Unique subtrs :", len(Individual.subtree_cache))
         print("Unique fits   :", len(Individual.unique_fits))
-        print("Diversity     :", len(unique_fits))
+        print("Diversity     :", len(unique(self.fits)))
         print("Avg tree size :", round(average(self.sizes), 3))
         print("Mutations     :", GP.mutations)
         print("Crossovers    :", GP.crossovers)
@@ -175,7 +181,7 @@ class GP:
         print("Best expr     :", self.best_repr)
         print()
 
-    def termination(self, gen: int, shared_dict: dict) -> bool:
+    def termination(self, shared_dict: dict) -> bool:
         # found solution with given precision on another core
         if self.update_dict(shared_dict):
             return True
@@ -187,33 +193,32 @@ class GP:
     def update_best(self, pos: int) -> None:
         if self.fits[pos] > self.best:
             self.best = self.fits[pos]
-            indi = self.pop[pos]
+            indi: Individual = self.pop[pos]
             self.best_repr = indi.as_expression(indi.genome)
             self.best_indi = self.new()
             self.best_indi.copy(indi)
 
     def run(self, show=False, threads=1) -> tuple:
         # run single threaded
-        shared_dict = {
+        shared_dict: dict = {
             "best": 0, "repr": "", "gen": 0, "indi": "", "done": False,
         }
         if threads <= 1:
             return self.run_threaded(shared_dict, show=show, simplify=True)
         # run multiple instances and stop if any solution is found
-        shared_dict = Manager().dict({
+        shared_dict: dict = Manager().dict({
             "best": 0, "repr": "", "gen": 0, "indi": "", "done": False,
         })
-        processes = []
+        processes: list = []
         for i in range(threads):
-            p = Process(
+            processes.append(Process(
                 target=run_wrapper,
                 args=(
                     (self.space.x_train.T, self.space.y_train, self.cfg),
                     shared_dict, GP.init_seed * (i + 1),
                 )
-            )
-            processes.append(p)
-            p.start()
+            ))
+            processes[-1].start()
         printer = Process(target=output_stream, args=(shared_dict, self.cfg, ))
         printer.start()
         [p.join() for p in processes]
@@ -230,17 +235,17 @@ class GP:
     def run_threaded(self, shared_dict, show=False, simplify=False) -> tuple:
         self.start = time()
         self.best, self.best_repr, self.best_indi = 0, "", self.new()
-        gen, gens = 1, self.cfg.gens + 1
+        self.gen, gens = 1, self.cfg.gens + 1
         for gen in range(1, gens):
             self.gen = gen
-            if (gen % (int(gens / 10) + 1) == 0) and show:
-                self.print_stats(gen)
-            if self.termination(gen, shared_dict):
+            if (self.gen % (int(gens / 10) + 1) == 0) and show:
+                self.print_stats()
+            if self.termination(shared_dict):
                 break
             self.mutate_pop()
             self.reproduction()
         if show:
-            self.print_stats(gen)
+            self.print_stats()
         if simplify:
             self.simplify_last_model()
         self.update_dict(shared_dict)

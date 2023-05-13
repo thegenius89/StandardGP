@@ -11,28 +11,28 @@ from random import choice, randint
 class SearchSpace:
 
     def __init__(self, x: ndarray, y: ndarray, cfg):
-        self.x_train = x.T
-        self.y_train = y
-        self.cfg = cfg
-        self.space = {
+        self.x_train: ndarray = x.T
+        self.y_train: ndarray = y
+        self.cfg: dict = cfg
+        self.space: dict = {
             "sin": sin, "cos": cos, "tan": tan, "abs": absolute, "pi": pi,
             "exp": self.pexp, "div": self.pdiv, "sqrt": self.psqrt,
             "log": self.plog, "sq": self.sq, "neg": negative, "pih": pi * 0.5,
         }
-        self.size = self.x_train.shape[1] * 1.0
-        self.target = self.normalize(y)
-        self.ts = [
+        self.size: float = self.x_train.shape[1] * 1.0
+        self.target: ndarray = self.normalize(y)
+        self.ts: list = [
             ("0.5", 0.5), ("1", 1.0), ("2", 2.0),
             ("pi", self.space["pi"]), ("pih", self.space["pih"]),
         ]
         for input in range(self.x_train.shape[0]):
             self.space["x{}".format(input)] = self.x_train[input]
             self.ts.append(("x{}".format(input), self.x_train[input]))
-        self.tnts = [
+        self.tnts: list = [
             ("+", add), ("+", add), ("-", subtract), ("*", multiply),
             ("/", self.space["div"]), ("-", subtract), ("*", multiply),
         ]
-        self.onts = [
+        self.onts: list = [
             ("sin", self.space["sin"]), ("cos", self.space["cos"]),
             ("log", self.space["log"]), ("exp", self.space["exp"]),
             ("sqrt", self.space["sqrt"]), ("sq", self.space["sq"]),
@@ -44,20 +44,20 @@ class SearchSpace:
         self.ts_iter = cycle([choice(self.ts) for _ in range(1223)])
         self.tnts_iter = cycle([choice(self.tnts) for _ in range(937)])
         self.onts_iter = cycle([choice(self.onts) for _ in range(1069)])
-        self.rand_nodes = {}
+        self.rand_nodes: dict = {}
         for s in range(1, self.cfg.max_nodes * 3):
             self.rand_nodes[s] = cycle([randint(0, s - 1) for _ in range(119)])
 
     def normalize(self, pred: ndarray) -> ndarray:
-        pred = pred - add.reduce(pred) / self.size
-        pred = pred / (add.reduce(pred * pred) ** 0.5)
+        pred: ndarray = pred - add.reduce(pred) / self.size
+        pred: ndarray = pred / (add.reduce(pred * pred) ** 0.5)
         return pred
 
     def reconstruct_invariances(self, repr) -> str:
         try:
             from scipy.stats import linregress
-            x = eval(repr, self.space)
-            y = self.y_train
+            x: ndarray = eval(repr, self.space)
+            y: ndarray = self.y_train
             slope, intercept, _r, _p, _std_err = linregress(x, y)
             slope, intercept = round(slope, 8), round(intercept, 8)
             return "{} + {} * ({})".format(intercept, slope, repr)
@@ -77,7 +77,7 @@ class SearchSpace:
         for k, v in space.items():
             if k not in hash_calculators:
                 hash_calculators[k] = rand()
-        self.mapper = {}
+        self.mapper: dict = {}
         for arr in [self.ts, self.tnts, self.onts]:
             for s in arr:
                 self.mapper[s[0]] = hash_calculators[s[0]]
