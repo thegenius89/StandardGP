@@ -11,34 +11,6 @@ from Individual import Individual
 from SearchSpace import SearchSpace
 
 
-class Config:
-
-    def __init__(self):
-        self.precision     = 0.99999999
-        self.gens          = 100     # [1, n] after 100 gens a solution is rare
-        self.elites        = 0.07    # [0, 0.5] elite copies per gen
-        self.crossovers    = 0.60    # [0, 2.0] inplace crossover on population
-        self.mutations     = 0.09    # [0, 1.0] probabillity per tree per gen
-        self.high_pressure = 0.9     # [0.1, 4.0] rank exponent - pick
-        self.low_pressure  = 0.3     # [0.1, 4.0] rank exponent - spread
-        self.pop_size      = 4000    # [1, n] number of trees
-        self.grow_limit    = 4       # [2, n] how fast individuals can grow
-        self.max_nodes     = 24      # [8, n] max nodes per tree
-        self.operators     = 0.2     # [0, 0.4] probabillity to select operator
-        self.functions     = 0.2     # [0, 0.4] probabillity to select function
-        self.noise         = 0.000   # make the dataset noisy
-        self.debug_pop     = False   # pick a sample and show while running
-        self.constants     = True    # insert random variables
-        self.cache_size    = 500000  # max ndarrays in cache
-
-    def update(self, cfg) -> None:
-        if isinstance(cfg, Config):
-            self = cfg
-        if isinstance(cfg, dict):
-            for k, v in cfg.items():
-                setattr(self, k, v)
-
-
 def run_wrapper(gp, shared_dict, seed) -> None:
     if seed != 0:
         GP.seed(seed)
@@ -48,14 +20,33 @@ def run_wrapper(gp, shared_dict, seed) -> None:
 
 def output_stream(shared_dict, cfg) -> None:
     while not shared_dict["done"]:
-        if shared_dict["best"] >= cfg.precision:
+        if shared_dict["best"] >= 1 - cfg.precision:
             break
         print("Fit: {}, Model: {}".format(
             shared_dict["best"], shared_dict["repr"]))
         sleep(0.5)
 
 
+class dotdict(dict):
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
+
+
 class GP:
+
+    cfg = dotdict({
+        "precision" : 1e-8,    # precision
+        "gens"      : 100,     # [1, n] after 100 gens a solution is rare
+        "elites"    : 0.07,    # [0, 0.5] elite copies per gen
+        "crossovers": 0.60,    # [0, 2.0] inplace crossover on population
+        "mutations" : 0.09,    # [0, 1.0] probabillity per tree per gen
+        "pop_size"  : 4000,    # [1, n] number of trees
+        "max_nodes" : 24,      # [8, n] max nodes per tree
+        "debug_pop" : False,   # pick a sample and show while running
+        "constants" : True,    # insert random variables
+        "cache_size": 500000,  # max ndarrays in cache
+    })
 
     mutations = 0
     crossovers = 0
@@ -63,16 +54,16 @@ class GP:
     init_seed = 0
 
     def __init__(self, x, y, cfg={}):
-        self.cfg = Config()
         self.cfg.update(cfg)
         self.space = SearchSpace(x, y, self.cfg)
         self.ps = self.cfg.pop_size
         self.gen = 0
         self.pop = array([self.new() for i in range(self.ps)])
         self.fits = full(self.ps, 0.0)
-        exp_ranks = arange(1, self.ps + 1) ** self.cfg.high_pressure
+        self.sizes = full(self.ps, 1)
+        exp_ranks = arange(1, self.ps + 1) ** 0.9
         self.sel_probs = exp_ranks / sum(exp_ranks)
-        exp_ranks = arange(1, self.ps + 1) ** self.cfg.low_pressure
+        exp_ranks = arange(1, self.ps + 1) ** 0.3
         self.lower_sel_probs = exp_ranks / sum(exp_ranks)
         self.init_pop()
 
@@ -92,23 +83,26 @@ class GP:
         cnt = 0
         while cnt < self.ps:
             indi = self.new()
-            fit = indi.get_fit(self.gen)
+            fit = indi.get_fit()
             if fit != 0:
                 self.pop[cnt] = indi
                 self.fits[cnt] = fit
+                self.sizes[cnt] = indi.tree_cnt
                 cnt += 1
 
     def mutate(self, pos: int) -> None:
         self.pop[pos].subtree_mutate()
-        self.fits[pos] = self.pop[pos].get_fit(self.gen)
+        self.fits[pos] = self.pop[pos].get_fit()
+        self.sizes[pos] = self.pop[pos].tree_cnt
         self.update_best(pos)
 
     def mutate_pop(self) -> None:
         # mutation based on fitness
         # the higher the fitness, the higher the probabillity to mutate
-        sort_indices = argsort(self.fits)
-        self.pop[:] = self.pop[sort_indices]
-        self.fits[:] = self.fits[sort_indices]
+        sort_fit = argsort(self.fits)
+        self.pop[:] = self.pop[sort_fit]
+        self.fits[:] = self.fits[sort_fit]
+        self.sizes[:] = self.sizes[sort_fit]
         size = int(self.ps * self.cfg.mutations)
         if size == 0:
             return
@@ -121,11 +115,14 @@ class GP:
         for c, i in enumerate(indices):
             self.pop[i].copy(self.pop[self.ps - c - 1])
             self.fits[i] = self.fits[self.ps - c - 1]
+            self.sizes[i] = self.sizes[self.ps - c - 1]
 
     def cx(self, i: int, j: int) -> None:
         if self.pop[i].crossover(self.pop[j]):
-            self.fits[i] = self.pop[i].get_fit(self.gen)
-            self.fits[j] = self.pop[j].get_fit(self.gen)
+            self.fits[i] = self.pop[i].get_fit()
+            self.fits[j] = self.pop[j].get_fit()
+            self.sizes[i] = self.pop[i].tree_cnt
+            self.sizes[j] = self.pop[j].tree_cnt
             self.update_best(i)
             self.update_best(j)
             GP.crossovers += 1
@@ -133,9 +130,12 @@ class GP:
         GP.cx_rejected += 1
 
     def reproduction(self) -> None:
-        sort_indices = argsort(self.fits)
-        self.pop[:] = self.pop[sort_indices]
-        self.fits[:] = self.fits[sort_indices]
+        # indices = where(self.sizes > average(self.sizes) * 1.5)[0]
+        # self.fits[indices] = 0
+        sort_fit = argsort(self.fits)
+        self.pop[:] = self.pop[sort_fit]
+        self.fits[:] = self.fits[sort_fit]
+        self.sizes[:] = self.sizes[sort_fit]
         # copy some of the best trees directly into the new population
         # by overwriting the worst trees
         until = int(self.ps * self.cfg.elites)
@@ -158,17 +158,15 @@ class GP:
         if self.cfg.debug_pop:
             for i, indi in enumerate(choice(self.pop, 20)):
                 print(indi.as_expression(indi.genome))
-        tree_size = average([indi.tree_cnt for indi in self.pop])
-        fit_calls = GP.mutations + GP.crossovers * 2 + self.ps
         print("Gen           :", gen)
         print("Mean          :", round(average(self.fits[self.fits != 0]), 5))
         print("Max           :", round(max(self.fits), 10))
-        print("Fit calls     :", fit_calls)
+        print("Fit calls     :", Individual.fit_calls)
         print("Unique exprs  :", len(Individual.tree_cache))
         print("Unique subtrs :", len(Individual.subtree_cache))
         print("Unique fits   :", len(Individual.unique_fits))
         print("Diversity     :", len(unique_fits))
-        print("Avg tree size :", round(tree_size, 3))
+        print("Avg tree size :", round(average(self.sizes), 3))
         print("Mutations     :", GP.mutations)
         print("Crossovers    :", GP.crossovers)
         print("CX Rejected   :", GP.cx_rejected)
@@ -182,7 +180,7 @@ class GP:
         if self.update_dict(shared_dict):
             return True
         # found solution with given precision
-        if self.best >= self.cfg.precision:
+        if self.best >= 1 - self.cfg.precision:
             return True
         return False
 
@@ -259,7 +257,7 @@ class GP:
             shared_dict["repr"] = self.best_repr
             shared_dict["gen"] = self.gen
             shared_dict["indi"] = self.best_indi
-        if shared_dict["best"] >= self.cfg.precision:
+        if shared_dict["best"] >= 1 - self.cfg.precision:
             return True
         return False
 

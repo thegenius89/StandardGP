@@ -29,13 +29,14 @@ class Individual:
     unique_fits = defaultdict(int)
     tree_cache = {}
     subtree_cache = {}
+    fit_calls = 0
 
     def __init__(self, cfg, space, min_d=2):
         self.space = space
         self.map = self.space.mapper
         self.cfg = cfg
         self.node_refs = {}
-        assert cfg.operators > 0.05 or cfg.functions > 0.05
+        self.const_prob = 1 / len(self.space.ts)
         self.genome = self.rand_tree(Node(None), min_d=min_d)
         self.tree_cnt = self.genome.node_cnt
         self.target = space.target
@@ -43,7 +44,8 @@ class Individual:
         self.hash = self.genome.hash
 
     # fitness with reduced function space <
-    def get_fit(self, gen) -> float:
+    def get_fit(self) -> float:
+        Individual.fit_calls += 1
         cfg = self.cfg
         maxi = cfg.max_nodes
         size = self.tree_cnt
@@ -58,9 +60,11 @@ class Individual:
             Individual.tree_cache[self.hash] = 0
             return 0
         error = add.reduce((self.target - (pred / norm_arr)) ** 2)
-        fit = 1 - (error / self.probl_size)
+        fit = 1 - (error / (self.probl_size + 1))
         Individual.unique_fits[fit] += 1
         Individual.tree_cache[self.hash] = fit
+        if fit >= 1 - cfg.precision:
+            return fit
         return fit
 
     def parse(self, root: Node) -> ndarray:
@@ -87,7 +91,7 @@ class Individual:
 
     # creates a new random tree <
     def rand_tree(self, root: Node, min_d=2, max_d=4) -> Node:
-        if random() < self.cfg.operators and max_d > 1:
+        if random() < 0.2 and max_d > 1:
             root.label, root.value = next(self.space.tnts_iter)
             root.left = self.rand_tree(Node(root), min_d - 1, max_d - 1)
             root.right = self.rand_tree(Node(root), min_d - 1, max_d - 1)
@@ -95,7 +99,7 @@ class Individual:
             root.hash_l = root.left.hash
             root.hash_r = root.right.hash
             root.hash = self.map[root.label](root.hash_l, root.hash_r)
-        elif random() < self.cfg.functions and max_d > 1:
+        elif random() < 0.2 and max_d > 1:
             root.label, root.value = next(self.space.onts_iter)
             root.left = self.rand_tree(Node(root), min_d - 1, max_d - 1)
             root.node_cnt += root.left.node_cnt
@@ -107,7 +111,7 @@ class Individual:
                 return root
             root.label, root.value = next(self.space.ts_iter)
             root.hash = self.map[root.label]
-            if self.cfg.constants and random() < 0.08:
+            if self.cfg.constants and random() < self.const_prob:
                 root.value = round(random() * 10, 1)
                 root.label = str(root.value)
                 root.hash = root.value
@@ -164,6 +168,9 @@ class Individual:
     def subtree_mutate(self) -> None:
         pos = next(self.space.rand_nodes[self.tree_cnt])
         node = list(self.node_refs.values())[pos]
+        maxi = self.cfg.max_nodes
+        if self.tree_cnt + 16 >= maxi * 3:
+            return
         parent = node.parent
         new_node = self.rand_tree(Node(parent), min_d=2)
         del self.node_refs[node.id]
@@ -204,7 +211,7 @@ class Individual:
                 pass  # result would be too large
             elif new_size_2 >= maxi:
                 pass  # result would be too large
-            elif abs(new_size_1 - new_size_2) > self.cfg.grow_limit:
+            elif abs(new_size_1 - new_size_2) > 4:
                 pass  # results would grow too fast
             else:
                 break  # found a node

@@ -22,7 +22,7 @@ class SearchSpace:
         self.size = self.x_train.shape[1] * 1.0
         self.target = self.normalize(y)
         self.ts = [
-            ("0", 0.0), ("0.5", 0.5), ("1", 1.0), ("2", 2.0),
+            ("0.5", 0.5), ("1", 1.0), ("2", 2.0),
             ("pi", self.space["pi"]), ("pih", self.space["pih"]),
         ]
         for input in range(self.x_train.shape[0]):
@@ -34,7 +34,6 @@ class SearchSpace:
         ]
         self.onts = [
             ("sin", self.space["sin"]), ("cos", self.space["cos"]),
-            ("abs", self.space["abs"]), ("neg", self.space["neg"]),
             ("log", self.space["log"]), ("exp", self.space["exp"]),
             ("sqrt", self.space["sqrt"]), ("sq", self.space["sq"]),
             ("tan", self.space["tan"]),
@@ -46,12 +45,11 @@ class SearchSpace:
         self.tnts_iter = cycle([choice(self.tnts) for _ in range(937)])
         self.onts_iter = cycle([choice(self.onts) for _ in range(1069)])
         self.rand_nodes = {}
-        for s in range(1, self.cfg.max_nodes * 2):
+        for s in range(1, self.cfg.max_nodes * 3):
             self.rand_nodes[s] = cycle([randint(0, s - 1) for _ in range(119)])
 
     def normalize(self, pred: ndarray) -> ndarray:
         pred = pred - add.reduce(pred) / self.size
-        pred += rand(int(self.size)) * self.cfg.noise
         pred = pred / (add.reduce(pred * pred) ** 0.5)
         return pred
 
@@ -86,19 +84,19 @@ class SearchSpace:
                 cnt += 1
 
     # protected numpy functions <
-    def sq(self, a: ndarray) -> ndarray:
+    def sq(self, a: ndarray) -> ndarray:  # against too large squares
         return a * where((a > 1000), 1, a)
 
-    def psqrt(self, a: ndarray) -> ndarray:
+    def psqrt(self, a: ndarray) -> ndarray:  # against negative sqrt
         return sqrt(absolute(a))
 
-    def plog(self, a: ndarray) -> ndarray:
+    def plog(self, a: ndarray) -> ndarray:  # against log of <= 0
         return log(absolute(where((a <= 0), 1, a)))
 
-    def pexp(self, a: ndarray) -> ndarray:
+    def pexp(self, a: ndarray) -> ndarray:  # against too large results
         return exp(where((absolute(a) > 5), 0, a))
 
-    def pdiv(self, a: ndarray, b: ndarray) -> ndarray:
+    def pdiv(self, a: ndarray, b: ndarray) -> ndarray:  # against x/0
         return divide(a, where((absolute(b) <= 0.000001), 1, b))
     # >
 
