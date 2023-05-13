@@ -22,7 +22,7 @@ if __name__ == "__main__":
     # example for regression tasks
     # see all regression datasets available at:
     # https://epistasislab.github.io/pmlb/
-    x, y = get_data("yeast")
+    x, y = get_data("579_fri_c0_250_5")
     gp = GP(x[::2, :], y[::2])  # half of the data to train
     best_fit, model = gp.run(show=True, threads=8)
     print("Epochs: {}, Fit: {}, Model: {}".format(gp.gen, best_fit, model))
