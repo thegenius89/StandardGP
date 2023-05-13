@@ -13,7 +13,7 @@ The goal of this project is to get a better understanding of GP algorithms throu
 
 ## Features
  - True vectorized fitness evaluation
- - Blow control without fitness intervention via stable Crossover
+ - Blow control without fitness intervention via semi-stable Crossover
  - Multithreaded optimization
  - Subtree-Cache that includes the isomorphism between functions
  - Subtree-Mutation based on fitness
@@ -46,16 +46,14 @@ All the hyperparameters are very good chosen - for many cases there is no need t
 The [...,...] are recommended ranges.
 ```python
 {
-    "precision" : 1e-8,    # precision
-    "gens"      : 100,     # [1, n] after 100 gens a solution is rare
-    "elites"    : 0.07,    # [0, 0.5] elite copies per gen
-    "crossovers": 0.60,    # [0, 2.0] inplace crossover on population
-    "mutations" : 0.09,    # [0, 1.0] probabillity per tree per gen
-    "pop_size"  : 4000,    # [1, n] number of trees
-    "max_nodes" : 24,      # [8, n] max nodes per tree
-    "debug_pop" : False,   # pick a sample and show while running
-    "constants" : True,    # insert random variables
-    "cache_size": 500000,  # max ndarrays in cache
+    "gens"       : 100,     # [1, n] stop after n generations
+    "pop_size"   : 4000,    # [1, n] number of trees in population
+    "elites"     : 0.15,    # [0, 0.5] % elite copies per generation
+    "crossovers" : 0.60,    # [0, 2.0] % inplace crossover on population
+    "mutations"  : 0.10,    # [0, 1.0] % probabillity per tree per gen
+    "max_nodes"  : 24,      # [8, n] max nodes per tree
+    "cache_size" : 500000,  # max ndarrays in cache (look at your RAM)
+    "precision"  : 1e-8,    # precision termination condition
 }
 ```
 Just pass a config to the GP
@@ -69,6 +67,7 @@ gp = GP(x, y, cfg={"mutations": 0.25, ...})
     pi, pi/2, 1, 2, 0.5, uniform(0, 10)
 
 ## Coming
+- blow control also in the copy reproduction operator to have complete control over size dynamics
 - register repo for the "Living Benchmark Suite"
   [https://github.com/cavalab/srbench](https://github.com/cavalab/srbench)
 - pip install standardgp
