@@ -45,18 +45,18 @@ You can see how huge your dataset can be without losing performance by changing 
 All the hyperparameters are very good chosen - for many cases there is no need to adjust them.
 The [...,...] are recommended ranges.
 ```python
-class Config:
-    def __init__(self):
-        self.precision     = 0.99999999
-        self.gens          = 100    # [1, n] number of generations
-        self.elites        = 0.07   # [0, 0.3] reproduction copies per generation
-        self.crossovers    = 0.60   # [0, 2.0] inplace crossover on population
-        self.mutations     = 0.09   # [0, 1.0] probabillity per tree per generation to mutate
-        self.pop_size      = 4000   # [1, n] number of trees
-        self.grow_limit    = 4      # [2, n] how fast individuals can grow
-        self.max_nodes     = 24     # [8, n] max nodes per tree
-        self.constants     = True   # insert random variables
-        self.cache_size    = 500000 # max ndarrays in cache
+{
+    "precision" : 1e-8,    # precision
+    "gens"      : 100,     # [1, n] after 100 gens a solution is rare
+    "elites"    : 0.07,    # [0, 0.5] elite copies per gen
+    "crossovers": 0.60,    # [0, 2.0] inplace crossover on population
+    "mutations" : 0.09,    # [0, 1.0] probabillity per tree per gen
+    "pop_size"  : 4000,    # [1, n] number of trees
+    "max_nodes" : 24,      # [8, n] max nodes per tree
+    "debug_pop" : False,   # pick a sample and show while running
+    "constants" : True,    # insert random variables
+    "cache_size": 500000,  # max ndarrays in cache
+}
 ```
 Just pass a config to the GP
 ```python
@@ -64,9 +64,9 @@ gp = GP(x, y, cfg={"mutations": 0.25, ...})
 ```
 
 ## Supported Operators/Functions/Constants
-    +, -, *, /, %
-    sin, cos, tan, exp, sqrt, log, abs, neg, square
-    pi, pi/2, e, 1, 2, 0, 0.5
+    +, -, *, /[p]
+    sin, cos, tan, exp[p], sqrt[abs], log[p], square[max]
+    pi, pi/2, 1, 2, 0.5, uniform(0, 10)
 
 ## Coming
 - register repo for the "Living Benchmark Suite"
@@ -83,8 +83,8 @@ gp = GP(x, y, cfg={"mutations": 0.25, ...})
 GP will one day be able to find optimal Neural Network architectures, many equivalent forms of Einsteins
 field equation and Schrödingers equation that are very interesting to study or may be able to find solutions
 to fundamental mathematical questions. Once there are operators that work globally for all problems to navigate a
-search through the infinite function space to find near optimal solutions the GP algorithms will alter
-its own algorithms to find even better and novel approaches to problems.
+search through the infinite function space to find near optimal solutions the GP algorithms will begin to alter
+its own operators and algorithms to find even better and novel approaches to problems.
 
 </body>
 </html>
