@@ -1,6 +1,6 @@
 import numpy as np
 
-from GP import GP
+from standardgp import GP
 
 
 if __name__ == "__main__":
