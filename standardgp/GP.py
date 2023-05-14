@@ -16,6 +16,8 @@ from time import time, sleep
 from Individual import Individual
 from SearchSpace import SearchSpace
 
+from random import random
+
 
 def run_wrapper(gp, store, seed) -> None:
     if seed != 0:
@@ -38,17 +40,18 @@ class dotdict(dict):
 
 
 class GP:
-
-    cfg: dotdict = dotdict({
-        "gens"      : 100,     # [1, n] stop after n generations
-        "pop_size"  : 4000,    # [1, n] number of trees in population
-        "elites"    : 0.15,    # [0, 0.5] % elite copies per generation
-        "crossovers": 0.70,    # [0, 2.0] % inplace crossover on population
-        "mutations" : 0.10,    # [0, 1.0] % probabillity per tree per gen
-        "max_nodes" : 24,      # [8, n] max nodes per tree
-        "cache_size": 500000,  # max ndarrays in cache (look at your RAM)
-        "precision" : 1e-8,    # precision termination condition
-    })
+    cfg: dotdict = dotdict(
+        {
+            "gens": 100,  # [1, n] stop after n generations
+            "pop_size": 4000,  # [1, n] number of trees in population
+            "elites": 0.15,  # [0, 0.5] % elite copies per generation
+            "crossovers": 0.70,  # [0, 2.0] % inplace crossover on population
+            "mutations": 0.10,  # [0, 1.0] % probabillity per tree per gen
+            "max_nodes": 24,  # [8, n] max nodes per tree
+            "cache_size": 500000,  # max ndarrays in cache (look at your RAM)
+            "precision": 1e-8,  # precision termination condition
+        }
+    )
 
     mutations: int = 0
     crossovers: int = 0
@@ -78,12 +81,13 @@ class GP:
     def seed(value: int) -> None:
         from numpy.random import seed
         from random import seed as std_lib_seed
+
         seed(value)
         std_lib_seed(value)
         GP.init_seed = value
 
-    def new(self) -> Individual:
-        return Individual(self.cfg, self.space)
+    def new(self, min_d=2, max_d=4) -> Individual:
+        return Individual(self.cfg, self.space, min_d, max_d)
 
     def init_pop(self) -> None:
         # fill population with non-zero-fitness trees
@@ -143,8 +147,11 @@ class GP:
         GP.cx_rejected += 1
 
     def reproduction(self) -> None:
-        # indices = where(self.sizes > average(self.sizes) * 1.5)[0]
-        # self.fits[indices] = 0
+        """indices = where(self.sizes > average(self.sizes) * 2.0)[0]
+        for i in indices:
+            self.pop[i] = self.new(min_d=2, max_d=4)
+            self.fits[i] = self.pop[i].get_fit()
+            self.sizes[i] = self.pop[i].tree_cnt"""
         self.sort_pop()
         # copy some of the best trees directly into the new population
         # by overwriting the worst trees
@@ -164,8 +171,8 @@ class GP:
         for i, indi in enumerate(choice(self.pop, 20)):
             print(indi.as_expression(indi.genome))
         print("Gen           :", self.gen)
-        print("Mean          :", round(average(self.fits[self.fits != 0]), 5))
-        print("Max           :", round(max(self.fits), 10))
+        print("Mean          :", round(average(self.fits[self.fits != 1]), 5))
+        print("Min           :", round(min(self.fits), 10))
         print("Fit calls     :", Individual.fit_calls)
         print("Unique exprs  :", len(Individual.tree_cache))
         print("Unique subtrs :", len(Individual.subtree_cache))
@@ -200,25 +207,45 @@ class GP:
     def run(self, show=False, threads=1) -> tuple:
         # run single threaded
         shared_dict: dict = {
-            "best": 1.0, "repr": "", "gen": 0, "indi": "", "done": False,
+            "best": 1.0,
+            "repr": "",
+            "gen": 0,
+            "indi": "",
+            "done": False,
         }
         if threads <= 1:
             self.init_pop()
             return self.run_threaded(shared_dict, show=show, simplify=True)
         # run multiple instances and stop if any solution is found
-        shared_dict: dict = Manager().dict({
-            "best": 1.0, "repr": "", "gen": 0, "indi": "", "done": False,
-        })
+        shared_dict: dict = Manager().dict(
+            {
+                "best": 1.0,
+                "repr": "",
+                "gen": 0,
+                "indi": "",
+                "done": False,
+            }
+        )
         processes: list = []
         for i in range(threads):
-            processes.append(Process(
-                target=run_wrapper,
-                args=((self.x, self.y, self.cfg),
-                      shared_dict, GP.init_seed * (i + 1),
+            processes.append(
+                Process(
+                    target=run_wrapper,
+                    args=(
+                        (self.x, self.y, self.cfg),
+                        shared_dict,
+                        GP.init_seed * (i + 1),
+                    ),
                 )
-            ))
+            )
             processes[-1].start()
-        printer = Process(target=output_stream, args=(shared_dict, self.cfg, ))
+        printer = Process(
+            target=output_stream,
+            args=(
+                shared_dict,
+                self.cfg,
+            ),
+        )
         printer.start()
         [p.join() for p in processes]
         shared_dict["done"] = True

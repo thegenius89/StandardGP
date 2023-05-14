@@ -7,37 +7,35 @@ from random import random
 
 
 class Node:
-
     ID: int = 0
 
     def __init__(self, perent):
-        self.value: int    = 0
-        self.label: str    = ""
-        self.left: Node    = None
-        self.right: Node   = None
-        self.parent: Node  = perent
+        self.value: int = 0
+        self.label: str = ""
+        self.left: Node = None
+        self.right: Node = None
+        self.parent: Node = perent
         self.hash_l: float = 0.0
         self.hash_r: float = 0.0
-        self.hash: float   = 0.0
+        self.hash: float = 0.0
         self.node_cnt: int = 1
-        self.id: int       = Node.ID
+        self.id: int = Node.ID
         Node.ID += 1
 
 
 class Individual:
-
     unique_fits: defaultdict = defaultdict(int)
     tree_cache: dict = {}
     subtree_cache: dict = {}
     fit_calls: int = 0
 
-    def __init__(self, cfg, space, min_d=2):
+    def __init__(self, cfg, space, min_d=2, max_d=4):
         self.space: SearchSpace = space
         self.map: dict = self.space.mapper
         self.cfg: dotdict = cfg
         self.node_refs: dict = {}
         self.const_prob: flaot = 1 / len(self.space.ts)
-        self.genome: Node = self.rand_tree(Node(None), min_d=min_d)
+        self.genome = self.rand_tree(Node(None), min_d=min_d, max_d=max_d)
         self.tree_cnt: int = self.genome.node_cnt
         self.target: ndarray = space.target
         self.probl_size: float = space.size
@@ -56,12 +54,12 @@ class Individual:
             return 1.0
         pred: array = self.parse(self.genome)
         pred: array = pred - add.reduce(pred) / self.probl_size
-        norm_arr: float = (add.reduce(pred * pred) ** 0.5)
+        norm_arr: float = add.reduce(pred * pred) ** 0.5
         if norm_arr == 0:
             Individual.tree_cache[self.hash] = 1.0
             return 1.0
         error = add.reduce((self.target - (pred / norm_arr)) ** 2)
-        fit: float = (error / (self.probl_size + 1))
+        fit: float = error / (self.probl_size + 1)
         Individual.unique_fits[fit] += 1
         Individual.tree_cache[self.hash] = fit
         return fit
@@ -81,11 +79,11 @@ class Individual:
             key: float = root.hash
             if key in Individual.subtree_cache:
                 return Individual.subtree_cache[key]
-            new_result = root.value(self.parse(root.left),
-                                    self.parse(root.right))
+            new_result = root.value(self.parse(root.left), self.parse(root.right))
             if len(Individual.subtree_cache) < self.cfg.cache_size:
                 Individual.subtree_cache[key] = new_result
             return new_result
+
     # >
 
     # creates a new random tree <
@@ -116,6 +114,7 @@ class Individual:
                 root.hash = root.value
         self.node_refs[root.id] = root
         return root
+
     # >
 
     # repair tree after change for fast access and hash calculation <
@@ -161,6 +160,7 @@ class Individual:
             k_0 = root.left.id
             self.node_refs[k_0] = other.node_refs.pop(k_0)
             self.fix_refs(root.left, other)
+
     # >
 
     # genetic operators <
@@ -240,6 +240,7 @@ class Individual:
         if subt_1.right:
             subt_1.right.parent = subt_1
         return True
+
     # >
 
     # tree copy <
@@ -272,6 +273,7 @@ class Individual:
         self.genome.id: int = Node.ID
         Node.ID += 1
         self.copy_rec(self.genome, other.genome)
+
     # >
 
     # for printing only <
@@ -287,6 +289,7 @@ class Individual:
             if root.label == "/":
                 return "div(" + subt_1 + ", " + subt_2 + ")"
             return "(" + subt_1 + ")" + root.label + "(" + subt_2 + ")"
+
     # >
 
     # simplification <
@@ -308,8 +311,9 @@ class Individual:
                     self.remove_function(root, root.left)
             return new_result
         else:
-            new_result = root.value(self.simplify_rec(root.left),
-                                    self.simplify_rec(root.right))
+            new_result = root.value(
+                self.simplify_rec(root.left), self.simplify_rec(root.right)
+            )
             if not isinstance(new_result, ndarray):
                 if root.parent is None:
                     return root.value
@@ -348,4 +352,5 @@ class Individual:
             child.left.parent = root
         if child.right:
             child.right.parent = root
+
     # >

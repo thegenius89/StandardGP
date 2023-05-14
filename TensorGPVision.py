@@ -5,7 +5,6 @@ from numpy import ndarray, where
 
 
 class TensorGPVision:
-
     def __init__(self, x: ndarray, y: ndarray):
         self.ps, self.depth, self.gs = 4000, 6, 20
         self.tree_matrix = tile(arange(self.ps) + 1, (self.depth, 1))

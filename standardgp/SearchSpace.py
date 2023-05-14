@@ -9,33 +9,52 @@ from random import choice, randint
 
 
 class SearchSpace:
-
     def __init__(self, x: ndarray, y: ndarray, cfg):
         self.x_train: ndarray = x.T
         self.y_train: ndarray = y
         self.cfg: dict = cfg
         self.space: dict = {
-            "sin": sin, "cos": cos, "tan": tan, "abs": absolute, "pi": pi,
-            "exp": self.pexp, "div": self.pdiv, "sqrt": self.psqrt,
-            "log": self.plog, "sq": self.sq, "neg": negative, "pih": pi * 0.5,
+            "sin": sin,
+            "cos": cos,
+            "tan": tan,
+            "abs": absolute,
+            "pi": pi,
+            "exp": self.pexp,
+            "div": self.pdiv,
+            "sqrt": self.psqrt,
+            "log": self.plog,
+            "sq": self.sq,
+            "neg": negative,
+            "pih": pi * 0.5,
         }
         self.size: float = self.x_train.shape[1] * 1.0
         self.target: ndarray = self.normalize(y)
         self.ts: list = [
-            ("0.5", 0.5), ("1", 1.0), ("2", 2.0),
-            ("pi", self.space["pi"]), ("pih", self.space["pih"]),
+            ("0.5", 0.5),
+            ("1", 1.0),
+            ("2", 2.0),
+            ("pi", self.space["pi"]),
+            ("pih", self.space["pih"]),
         ]
         for input in range(self.x_train.shape[0]):
             self.space["x{}".format(input)] = self.x_train[input]
             self.ts.append(("x{}".format(input), self.x_train[input]))
         self.tnts: list = [
-            ("+", add), ("+", add), ("-", subtract), ("*", multiply),
-            ("/", self.space["div"]), ("-", subtract), ("*", multiply),
+            ("+", add),
+            ("+", add),
+            ("-", subtract),
+            ("*", multiply),
+            ("/", self.space["div"]),
+            ("-", subtract),
+            ("*", multiply),
         ]
         self.onts: list = [
-            ("sin", self.space["sin"]), ("cos", self.space["cos"]),
-            ("log", self.space["log"]), ("exp", self.space["exp"]),
-            ("sqrt", self.space["sqrt"]), ("sq", self.space["sq"]),
+            ("sin", self.space["sin"]),
+            ("cos", self.space["cos"]),
+            ("log", self.space["log"]),
+            ("exp", self.space["exp"]),
+            ("sqrt", self.space["sqrt"]),
+            ("sq", self.space["sq"]),
             ("tan", self.space["tan"]),
         ]
         self.build_hash_system(self.space)
@@ -56,6 +75,7 @@ class SearchSpace:
     def reconstruct_invariances(self, repr) -> str:
         try:
             from scipy.stats import linregress
+
             x: ndarray = eval(repr, self.space)
             y: ndarray = self.y_train
             slope, intercept, _r, _p, _std_err = linregress(x, y)
@@ -66,13 +86,28 @@ class SearchSpace:
 
     def build_hash_system(self, space, cnt=0) -> None:
         import math
+
         # topological hash functions
         hash_calculators = {
-            "pi": space["pi"], "pih": space["pih"], "tan": math.tan,
-            "1": 1.0, "2": 2.0, "+": self.hadd, "-": self.hsub, "*": self.hmul,
-            "0": 0.0, "/": self.hpdiv, "log": self.hplog, "exp": self.hpexp,
-            "sq": self.hsq, "abs": abs, "neg": self.hneg, "sin": math.sin,
-            "cos": math.cos, "0.5": 0.5, "sqrt": self.hpsqrt,
+            "pi": space["pi"],
+            "pih": space["pih"],
+            "tan": math.tan,
+            "1": 1.0,
+            "2": 2.0,
+            "+": self.hadd,
+            "-": self.hsub,
+            "*": self.hmul,
+            "0": 0.0,
+            "/": self.hpdiv,
+            "log": self.hplog,
+            "exp": self.hpexp,
+            "sq": self.hsq,
+            "abs": abs,
+            "neg": self.hneg,
+            "sin": math.sin,
+            "cos": math.cos,
+            "0.5": 0.5,
+            "sqrt": self.hpsqrt,
         }
         for k, v in space.items():
             if k not in hash_calculators:
@@ -98,6 +133,7 @@ class SearchSpace:
 
     def pdiv(self, a: ndarray, b: ndarray) -> ndarray:  # against x/0
         return divide(a, where((absolute(b) <= 0.000001), 1, b))
+
     # >
 
     # equivalent hash functions <
@@ -127,4 +163,5 @@ class SearchSpace:
 
     def hmul(self, a: float, b: float) -> float:
         return a * b
+
     # >

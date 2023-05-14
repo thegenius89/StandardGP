@@ -10,6 +10,7 @@ To provide a comparison algorithm between new linear GP variants and StandardGP 
 The goal of this project is to get a better understanding of GP algorithms through visualizations.
 
 [![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 ## Features
  - True vectorized fitness evaluation
