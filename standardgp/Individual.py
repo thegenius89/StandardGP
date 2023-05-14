@@ -79,7 +79,9 @@ class Individual:
             key: float = root.hash
             if key in Individual.subtree_cache:
                 return Individual.subtree_cache[key]
-            new_result = root.value(self.parse(root.left), self.parse(root.right))
+            new_result = root.value(
+                self.parse(root.left), self.parse(root.right)
+            )
             if len(Individual.subtree_cache) < self.cfg.cache_size:
                 Individual.subtree_cache[key] = new_result
             return new_result
@@ -164,12 +166,12 @@ class Individual:
     # >
 
     # genetic operators <
-    def subtree_mutate(self) -> None:
+    def subtree_mutate(self) -> bool:
         pos: int = next(self.space.rand_nodes[self.tree_cnt])
         node: Node = list(self.node_refs.values())[pos]
         maxi: int = self.cfg.max_nodes
         if self.tree_cnt + 16 >= maxi * 3:
-            return
+            return False
         parent: Node = node.parent
         new_node: Node = self.rand_tree(Node(parent), min_d=2)
         del self.node_refs[node.id]
@@ -183,6 +185,7 @@ class Individual:
                 parent.right = new_node
         self.fix_sizes(new_node, new_node.node_cnt - node.node_cnt)
         self.fix_hashs(new_node)
+        return True
 
     def crossover(self, other) -> bool:
         rng: dict = self.space.rand_nodes

@@ -3,7 +3,7 @@
 
 from itertools import cycle
 from numpy import ndarray, add, tan, subtract, multiply, divide
-from numpy import cos, sin, absolute, pi, negative, where, log, sqrt, exp
+from numpy import cos, sin, absolute, pi, where, log, sqrt, exp
 from numpy.random import rand
 from random import choice, randint
 
@@ -17,15 +17,13 @@ class SearchSpace:
             "sin": sin,
             "cos": cos,
             "tan": tan,
-            "abs": absolute,
-            "pi": pi,
             "exp": self.pexp,
             "div": self.pdiv,
             "sqrt": self.psqrt,
             "log": self.plog,
             "sq": self.sq,
-            "neg": negative,
             "pih": pi * 0.5,
+            "pi": pi,
         }
         self.size: float = self.x_train.shape[1] * 1.0
         self.target: ndarray = self.normalize(y)
@@ -43,10 +41,10 @@ class SearchSpace:
             ("+", add),
             ("+", add),
             ("-", subtract),
-            ("*", multiply),
-            ("/", self.space["div"]),
             ("-", subtract),
             ("*", multiply),
+            ("*", multiply),
+            ("/", self.space["div"]),
         ]
         self.onts: list = [
             ("sin", self.space["sin"]),
@@ -58,8 +56,7 @@ class SearchSpace:
             ("tan", self.space["tan"]),
         ]
         self.build_hash_system(self.space)
-        # provide random nodes that the algorithm just need to call
-        # next(...) for fast execution
+        # provide fast random access
         self.ts_iter = cycle([choice(self.ts) for _ in range(1223)])
         self.tnts_iter = cycle([choice(self.tnts) for _ in range(937)])
         self.onts_iter = cycle([choice(self.onts) for _ in range(1069)])
@@ -89,24 +86,21 @@ class SearchSpace:
 
         # topological hash functions
         hash_calculators = {
+            "0.5": 0.5,
+            "1": 1.0,
+            "2": 2.0,
             "pi": space["pi"],
             "pih": space["pih"],
             "tan": math.tan,
-            "1": 1.0,
-            "2": 2.0,
+            "sin": math.sin,
+            "cos": math.cos,
             "+": self.hadd,
             "-": self.hsub,
             "*": self.hmul,
-            "0": 0.0,
             "/": self.hpdiv,
             "log": self.hplog,
             "exp": self.hpexp,
             "sq": self.hsq,
-            "abs": abs,
-            "neg": self.hneg,
-            "sin": math.sin,
-            "cos": math.cos,
-            "0.5": 0.5,
             "sqrt": self.hpsqrt,
         }
         for k, v in space.items():
@@ -139,9 +133,6 @@ class SearchSpace:
     # equivalent hash functions <
     def hsq(self, a: float) -> float:
         return a * a if a <= 1000 else a
-
-    def hneg(self, a: float) -> float:
-        return -a
 
     def hpsqrt(self, a: float) -> float:
         return sqrt(abs(a))

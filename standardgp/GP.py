@@ -4,19 +4,15 @@
 # meassure time
 # python -m cProfile -o out ExampleFunc.py
 # python -m pstats out
-# check code style
-# flake8 --ignore E221,E251,E203,F821 --exclude ./tests
 
 from multiprocessing import Process, Manager
-from numpy import argsort, arange, sum, max, average, fromiter
+from numpy import argsort, arange, sum, average, fromiter
 from numpy import full, array, ndarray, where, unique
 from numpy.random import choice
 from time import time, sleep
 
 from Individual import Individual
 from SearchSpace import SearchSpace
-
-from random import random
 
 
 def run_wrapper(gp, store, seed) -> None:
@@ -29,8 +25,10 @@ def run_wrapper(gp, store, seed) -> None:
 
 def output_stream(store, cfg) -> None:
     while not store["done"] and store["best"] > cfg.precision:
-        print("Error: {}, Model: {}".format(store["best"], store["repr"]))
-        sleep(0.5)
+        if store["repr"]:
+            form = "Error: {:1.12f}, Model: {}"
+            print(form.format(store["best"], store["repr"]))
+        sleep(0.3)
 
 
 class dotdict(dict):
@@ -42,14 +40,14 @@ class dotdict(dict):
 class GP:
     cfg: dotdict = dotdict(
         {
-            "gens": 100,  # [1, n] stop after n generations
-            "pop_size": 4000,  # [1, n] number of trees in population
-            "elites": 0.15,  # [0, 0.5] % elite copies per generation
-            "crossovers": 0.70,  # [0, 2.0] % inplace crossover on population
-            "mutations": 0.10,  # [0, 1.0] % probabillity per tree per gen
-            "max_nodes": 24,  # [8, n] max nodes per tree
-            "cache_size": 500000,  # max ndarrays in cache (look at your RAM)
-            "precision": 1e-8,  # precision termination condition
+            "gens": 100,
+            "pop_size": 4000,
+            "elites": 0.15,
+            "crossovers": 0.70,
+            "mutations": 0.10,
+            "max_nodes": 24,
+            "cache_size": 500000,  # make sure your RAM supports this
+            "precision": 1e-8,
         }
     )
 
@@ -102,10 +100,11 @@ class GP:
                 cnt += 1
 
     def mutate(self, pos: int) -> None:
-        self.pop[pos].subtree_mutate()
-        self.fits[pos] = self.pop[pos].get_fit()
-        self.sizes[pos] = self.pop[pos].tree_cnt
-        self.update_best(pos)
+        if self.pop[pos].subtree_mutate():
+            self.fits[pos] = self.pop[pos].get_fit()
+            self.sizes[pos] = self.pop[pos].tree_cnt
+            self.update_best(pos)
+            GP.mutations += 1
 
     def sort_pop(self) -> None:
         sort_fit: indices = argsort(self.fits)[::-1]
@@ -115,7 +114,6 @@ class GP:
 
     def mutate_pop(self) -> None:
         # mutation based on fitness
-        # the higher the fitness, the higher the probabillity to mutate
         size: int = int(self.ps * self.cfg.mutations)
         if size == 0:
             return
@@ -123,11 +121,13 @@ class GP:
         upper: indices = choice(self.ps, p=self.upper_probs, size=size)
         iter = map(lambda a: self.mutate(a), upper)
         fromiter(iter, None)
-        GP.mutations += size
 
     def copy_elites(self, elites: int) -> None:
         if elites == 0:
             return
+        # size control in progress
+        # elite_probs = self.elite_probs / self.sizes[self.elite_range]
+        # elite_probs += full(elite_probs.size, (1 - sum(elite_probs)) / elite_probs.size)
         copies = choice(self.elite_range, p=self.elite_probs, size=elites)
         for idx, elite in enumerate(copies):
             self.pop[idx].copy(self.pop[elite])
@@ -147,17 +147,15 @@ class GP:
         GP.cx_rejected += 1
 
     def reproduction(self) -> None:
+        # size control in progress
         """indices = where(self.sizes > average(self.sizes) * 2.0)[0]
         for i in indices:
             self.pop[i] = self.new(min_d=2, max_d=4)
             self.fits[i] = self.pop[i].get_fit()
             self.sizes[i] = self.pop[i].tree_cnt"""
         self.sort_pop()
-        # copy some of the best trees directly into the new population
-        # by overwriting the worst trees
         self.copy_elites(self.elites)
-        # swap subtrees between many individuals
-        # (more then 2 parents possible)
+        # more then 2 parents possible
         size: int = int(self.ps * self.cfg.crossovers)
         if size == 0:
             return
@@ -204,29 +202,42 @@ class GP:
             self.best_indi = self.new()
             self.best_indi.copy(indi)
 
-    def run(self, show=False, threads=1) -> tuple:
-        # run single threaded
-        shared_dict: dict = {
+    def get_default_stats(self) -> dict:
+        return {
             "best": 1.0,
             "repr": "",
-            "gen": 0,
-            "indi": "",
+            "gen": 1,
+            "indi": self.new(),
             "done": False,
         }
+
+    def rand_config(self) -> dict:
+        from random import randint
+        cfg = self.cfg
+        cfg.update({
+            "elites": randint(5, 15) / 100.0,
+            "crossovers": randint(20, 60) / 100.0,
+            "mutations": randint(3, 15) / 100.0,
+        })
+        return cfg
+
+    def run(self, show=False, threads=1) -> tuple:
+        # run single threaded
+        shared_dict: dict = self.get_default_stats()
         if threads <= 1:
             self.init_pop()
             return self.run_threaded(shared_dict, show=show, simplify=True)
         # run multiple instances and stop if any solution is found
-        shared_dict: dict = Manager().dict(
-            {
-                "best": 1.0,
-                "repr": "",
-                "gen": 0,
-                "indi": "",
-                "done": False,
-            }
-        )
+        shared_dict: dict = Manager().dict(self.get_default_stats())
         processes: list = []
+        printer = Process(
+            target=output_stream,
+            args=(
+                shared_dict,
+                self.cfg,
+            ),
+        )
+        printer.start()
         for i in range(threads):
             processes.append(
                 Process(
@@ -239,14 +250,6 @@ class GP:
                 )
             )
             processes[-1].start()
-        printer = Process(
-            target=output_stream,
-            args=(
-                shared_dict,
-                self.cfg,
-            ),
-        )
-        printer.start()
         [p.join() for p in processes]
         shared_dict["done"] = True
         printer.join()
