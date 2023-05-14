@@ -36,7 +36,7 @@ x = np.random.rand(200, 5) * 4 - 2
 y = np.sin(x[:, 0] * x[:, 0]) * np.cos(x[:, 1] - 1) * 188 - 243
 gp = GP(x, y)
 best_fit, model = gp.run(show=True, threads=8)
-print("Epochs: {}, Fit: {}, Model: {}".format(gp.gen, best_fit, model))
+print("Fit: {}, Model: {}".format(best_fit, model))
 print("RMSE:", np.sqrt(np.mean(np.square(gp.predict(x) - y))))
 ```
 You can see how huge your dataset can be without losing performance by changing the 200 to say 2000.
