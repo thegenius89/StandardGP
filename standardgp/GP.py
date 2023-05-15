@@ -1,10 +1,6 @@
 # Copyright (c) 2023, Thure Foken.
 # All rights reserved.
 
-# meassure time
-# python -m cProfile -o out ExampleFunc.py
-# python -m pstats out
-
 from multiprocessing import Process, Manager
 from numpy import argsort, arange, sum, average, fromiter
 from numpy import full, array, ndarray, where, unique
@@ -16,6 +12,9 @@ from SearchSpace import SearchSpace
 
 
 def run_wrapper(gp, store, seed) -> None:
+    """
+    Initialize a new GP instance for each process.
+    """
     if seed != 0:
         GP.seed(seed)
     gp = GP(gp[0], gp[1], gp[2])
@@ -24,6 +23,9 @@ def run_wrapper(gp, store, seed) -> None:
 
 
 def output_stream(store, cfg) -> None:
+    """
+    A Thread that prints the best model over all cores to the console.
+    """
     while not store["done"] and store["best"] > cfg.precision:
         if store["repr"]:
             form = "Error: {:1.12f}, Model: {}"
@@ -38,18 +40,20 @@ class dotdict(dict):
 
 
 class GP:
-    cfg: dotdict = dotdict(
-        {
-            "gens": 100,
-            "pop_size": 4000,
-            "elites": 0.15,
-            "crossovers": 0.70,
-            "mutations": 0.10,
-            "max_nodes": 24,
-            "cache_size": 500000,  # make sure your RAM supports this
-            "precision": 1e-8,
-        }
-    )
+    """
+    StandardGP is a multi-core symbolic regression algorithm
+    with vectorized fitness evaluation and a reduced function space.
+    """
+    cfg: dotdict = dotdict({
+        "gens": 100,
+        "pop_size": 4000,
+        "elites": 0.15,
+        "crossovers": 0.70,
+        "mutations": 0.10,
+        "max_nodes": 24,
+        "cache_size": 500000,  # make sure your RAM supports this
+        "precision": 1e-8,
+    })
 
     mutations: int = 0
     crossovers: int = 0
@@ -241,30 +245,26 @@ class GP:
             return self.run_threaded(shared_dict, show=show, simplify=True)
         # run multiple instances and stop if any solution is found
         shared_dict: dict = Manager().dict(self.get_default_stats())
-        processes: list = []
-        printer = Process(
-            target=output_stream,
-            args=(
-                shared_dict,
-                self.cfg,
-            ),
-        )
-        printer.start()
-        for i in range(threads):
-            processes.append(
-                Process(
-                    target=run_wrapper,
-                    args=(
-                        (self.x, self.y, self.cfg),
-                        shared_dict,
-                        GP.init_seed * (i + 1),
-                    ),
-                )
+        if show:
+            printer = Process(  # streams stats to the console
+                target=output_stream,
+                args=(shared_dict, self.cfg, ),
             )
+            printer.start()
+        processes: list = []
+        for i in range(threads):
+            processes.append(Process(  # runs a GP algorithm
+                target=run_wrapper, args=(
+                    (self.x, self.y, self.cfg),  # train x, train y, config
+                    shared_dict,  # shared stats
+                    GP.init_seed * (i + 1),  # seed for each process
+                ),
+            ))
             processes[-1].start()
         [p.join() for p in processes]
         shared_dict["done"] = True
-        printer.join()
+        if show:
+            printer.join()
         self.best = shared_dict["best"]
         self.best_repr = shared_dict["repr"]
         self.gen = shared_dict["gen"]

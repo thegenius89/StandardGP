@@ -7,12 +7,22 @@ from numpy import cos, sin, absolute, pi, where, log, sqrt, exp
 from numpy.random import rand
 from random import choice, randint
 
+import math
+
 
 class SearchSpace:
+    """
+    SearchSpace inclues the function space and the search space.
+    The function space is defined as every mathematical function.
+    The search space is defined as any combination of given operators.
+    SearchSpace also defines how to map Node labes to the corresponding
+    data or operator and the corresponding hash value or operator.
+    """
     def __init__(self, x: ndarray, y: ndarray, cfg):
         self.x_train: ndarray = x.T
         self.y_train: ndarray = y
         self.cfg: dict = cfg
+        # defining the search space
         self.space: dict = {
             "sin": sin,
             "cos": cos,
@@ -25,19 +35,14 @@ class SearchSpace:
             "pih": pi * 0.5,
             "pi": pi,
         }
-        self.size: float = self.x_train.shape[1] * 1.0
-        self.target: ndarray = self.normalize(y)
-        self.ts: list = [
+        self.terminals: list = [
             ("0.5", 0.5),
             ("1", 1.0),
             ("2", 2.0),
             ("pi", self.space["pi"]),
             ("pih", self.space["pih"]),
         ]
-        for input in range(self.x_train.shape[0]):
-            self.space["x{}".format(input)] = self.x_train[input]
-            self.ts.append(("x{}".format(input), self.x_train[input]))
-        self.tnts: list = [
+        self.binary: list = [
             ("+", add),
             ("+", add),
             ("-", subtract),
@@ -46,7 +51,7 @@ class SearchSpace:
             ("*", multiply),
             ("/", self.space["div"]),
         ]
-        self.onts: list = [
+        self.unary: list = [
             ("sin", self.space["sin"]),
             ("cos", self.space["cos"]),
             ("log", self.space["log"]),
@@ -55,21 +60,30 @@ class SearchSpace:
             ("sq", self.space["sq"]),
             ("tan", self.space["tan"]),
         ]
+        # bring the input and output in the right form for GP
+        self.size: float = self.x_train.shape[1] * 1.0
+        self.target: ndarray = self.normalize(y)
+        for input in range(self.x_train.shape[0]):
+            input_name = "x{}".format(input)
+            self.space[input_name] = self.x_train[input]
+            self.terminals.append((input_name, self.x_train[input]))
         self.build_hash_system(self.space)
         # provide fast random access
-        self.ts_iter = cycle([choice(self.ts) for _ in range(1223)])
-        self.tnts_iter = cycle([choice(self.tnts) for _ in range(937)])
-        self.onts_iter = cycle([choice(self.onts) for _ in range(1069)])
+        self.term_iter = cycle([choice(self.terminals) for _ in range(1223)])
+        self.binary_iter = cycle([choice(self.binary) for _ in range(937)])
+        self.unary_iter = cycle([choice(self.unary) for _ in range(1069)])
         self.rand_nodes: dict = {}
         for s in range(1, self.cfg.max_nodes * 3):
             self.rand_nodes[s] = cycle([randint(0, s - 1) for _ in range(119)])
 
     def normalize(self, pred: ndarray) -> ndarray:
+        # location and scale invariance
         pred: ndarray = pred - add.reduce(pred) / self.size
         pred: ndarray = pred / (add.reduce(pred * pred) ** 0.5)
         return pred
 
     def reconstruct_invariances(self, repr) -> str:
+        # reconstructs the invariants after the run
         try:
             from scipy.stats import linregress
 
@@ -81,11 +95,9 @@ class SearchSpace:
         except Exception:
             return repr
 
-    def build_hash_system(self, space, cnt=0) -> None:
-        import math
-
+    def build_hash_system(self, space) -> None:
         # topological hash functions
-        hash_calculators = {
+        label_hash = {
             "0.5": 0.5,
             "1": 1.0,
             "2": 2.0,
@@ -103,14 +115,14 @@ class SearchSpace:
             "sq": self.hsq,
             "sqrt": self.hpsqrt,
         }
-        for k, v in space.items():
-            if k not in hash_calculators:
-                hash_calculators[k] = rand()
+        # float64 random variable for each input
+        label_hash.update(
+            {k: rand() for k, _ in space.items() if k not in label_hash}
+        )
+        # mapping the Node labels to the functions
         self.mapper: dict = {}
-        for arr in [self.ts, self.tnts, self.onts]:
-            for s in arr:
-                self.mapper[s[0]] = hash_calculators[s[0]]
-                cnt += 1
+        for arr in self.terminals + self.binary + self.unary:
+            self.mapper[arr[0]] = label_hash[arr[0]]
 
     # protected numpy functions <
     def sq(self, a: ndarray) -> ndarray:  # against too large squares
@@ -125,12 +137,12 @@ class SearchSpace:
     def pexp(self, a: ndarray) -> ndarray:  # against too large results
         return exp(where((absolute(a) > 5), 0, a))
 
-    def pdiv(self, a: ndarray, b: ndarray) -> ndarray:  # against x/0
+    def pdiv(self, a: ndarray, b: ndarray) -> ndarray:  # against x/lim(0)
         return divide(a, where((absolute(b) <= 0.000001), 1, b))
 
     # >
 
-    # equivalent hash functions <
+    # equivalent protected hash functions <
     def hsq(self, a: float) -> float:
         return a * a if a <= 1000 else a
 

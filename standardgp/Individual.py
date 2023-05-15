@@ -7,6 +7,11 @@ from random import random
 
 
 class Node:
+    """
+    A node represents a terminal, unary or binary operator.
+    All functions and the input ndarrays are directly inside the value.
+    Every Node has a unique ID to maintain references to all nodes.
+    """
     ID: int = 0
 
     def __init__(self, perent):
@@ -24,6 +29,15 @@ class Node:
 
 
 class Individual:
+    """
+    Individual represents a HashTree capable of maintaining all Nodes in
+    a reference for fast Node-Access and an automatically adapted size.
+    Creating a new Individual results in creating a random mathematical
+    equation, randomly distributed in search space and initial size.
+
+    The Crossover-Operator is inplace, swapping directly two subtrees
+    within two trees. The parser directly works on the ndarrays and functions.
+    """
     unique_fits: defaultdict = defaultdict(int)
     tree_cache: dict = {}
     subtree_cache: dict = {}
@@ -34,7 +48,7 @@ class Individual:
         self.map: dict = self.space.mapper
         self.cfg: dotdict = cfg
         self.node_refs: dict = {}
-        self.const_prob: flaot = 1 / len(self.space.ts)
+        self.const_prob: flaot = 1 / len(self.space.terminals)
         self.genome = self.rand_tree(Node(None), min_d=min_d, max_d=max_d)
         self.tree_cnt: int = self.genome.node_cnt
         self.target: ndarray = space.target
@@ -94,7 +108,7 @@ class Individual:
     # creates a new random tree <
     def rand_tree(self, root: Node, min_d=2, max_d=4) -> Node:
         if random() < 0.2 and max_d > 1:
-            root.label, root.value = next(self.space.tnts_iter)
+            root.label, root.value = next(self.space.binary_iter)
             root.left = self.rand_tree(Node(root), min_d - 1, max_d - 1)
             root.right = self.rand_tree(Node(root), min_d - 1, max_d - 1)
             root.node_cnt += root.left.node_cnt + root.right.node_cnt
@@ -102,16 +116,18 @@ class Individual:
             root.hash_r = root.right.hash
             root.hash = self.map[root.label](root.hash_l, root.hash_r)
         elif random() < 0.2 and max_d > 1:
-            root.label, root.value = next(self.space.onts_iter)
+            root.label, root.value = next(self.space.unary_iter)
             root.left = self.rand_tree(Node(root), min_d - 1, max_d - 1)
             root.node_cnt += root.left.node_cnt
             root.hash_l = root.left.hash
             root.hash = self.map[root.label](root.hash_l)
         else:
             if min_d > 1:
+                # if the minimal depth is not reached yet,
+                # this function is called again
                 self.rand_tree(root, min_d, max_d)
                 return root
-            root.label, root.value = next(self.space.ts_iter)
+            root.label, root.value = next(self.space.term_iter)
             root.hash = self.map[root.label]
             if random() < self.const_prob:
                 root.value = round(random() * 10, 1)
@@ -195,7 +211,7 @@ class Individual:
         node: Node = list(self.node_refs.values())[pos]
         parent: Node = node.parent
         new_node = Node(parent)
-        new_node.label, new_node.value = next(self.space.ts_iter)
+        new_node.label, new_node.value = next(self.space.term_iter)
         new_node.hash = self.map[new_node.label]
         self.node_refs[new_node.id] = new_node
         del self.node_refs[node.id]
@@ -319,7 +335,7 @@ class Individual:
 
     # >
 
-    # simplification <
+    # simplification only for the last model <
     def simplify(self) -> object:
         self.simplify_rec(self.genome)
         return self

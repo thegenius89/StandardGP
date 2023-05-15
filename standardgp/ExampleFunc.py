@@ -2,6 +2,10 @@ import numpy as np
 
 from standardgp import GP
 
+# meassure time
+# python -m cProfile -o out ExampleFunc.py
+# python -m pstats out
+
 
 if __name__ == "__main__":
     # GP.seed(129)
