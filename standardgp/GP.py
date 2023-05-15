@@ -70,6 +70,7 @@ class GP:
         self.lower_probs: ndarray = self.get_rank_field(self.ps, 0.3)
         self.elite_range: indices = arange(self.ps - self.elites, self.ps)
         self.elite_probs: ndarray = self.get_rank_field(self.elites, 2.0)
+        self.best, self.best_repr, self.best_indi = 1.0, "", self.new()
 
     def get_rank_field(self, size, rank_exponent) -> ndarray:
         exp_ranks = arange(size) ** rank_exponent
@@ -97,10 +98,18 @@ class GP:
                 self.pop[cnt] = indi
                 self.fits[cnt] = fit
                 self.sizes[cnt] = indi.tree_cnt
+                self.update_best(cnt)
                 cnt += 1
 
     def mutate(self, pos: int) -> None:
         if self.pop[pos].subtree_mutate():
+            self.fits[pos] = self.pop[pos].get_fit()
+            self.sizes[pos] = self.pop[pos].tree_cnt
+            self.update_best(pos)
+            GP.mutations += 1
+
+    def shrink(self, pos: int) -> None:
+        if self.pop[pos].shrink_mutate():
             self.fits[pos] = self.pop[pos].get_fit()
             self.sizes[pos] = self.pop[pos].tree_cnt
             self.update_best(pos)
@@ -117,6 +126,9 @@ class GP:
         size: int = int(self.ps * self.cfg.mutations)
         if size == 0:
             return
+        # upper: indices = choice(self.ps, p=self.upper_probs, size=size)
+        # iter = map(lambda a: self.shrink(a), upper)
+        # fromiter(iter, None)
         self.sort_pop()
         upper: indices = choice(self.ps, p=self.upper_probs, size=size)
         iter = map(lambda a: self.mutate(a), upper)
@@ -263,7 +275,6 @@ class GP:
 
     def run_threaded(self, shared_dict, show=False, simplify=False) -> tuple:
         self.start = time()
-        self.best, self.best_repr, self.best_indi = 1.0, "", self.new()
         self.gen, gens = 1, self.cfg.gens + 1
         for gen in range(1, gens):
             self.gen = gen

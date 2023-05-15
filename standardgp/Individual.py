@@ -48,6 +48,9 @@ class Individual:
         maxi: int = cfg.max_nodes
         size: int = self.tree_cnt
         if self.hash in Individual.tree_cache:
+            fit = Individual.tree_cache[self.hash]
+            # if Individual.unique_fits[fit] > 1000:
+            #     Individual.tree_cache[self.hash] = 1.0
             return Individual.tree_cache[self.hash]
         if size >= maxi or size < 3:
             Individual.tree_cache[self.hash] = 1.0
@@ -110,7 +113,7 @@ class Individual:
                 return root
             root.label, root.value = next(self.space.ts_iter)
             root.hash = self.map[root.label]
-            if self.cfg.constants and random() < self.const_prob:
+            if random() < self.const_prob:
                 root.value = round(random() * 10, 1)
                 root.label = str(root.value)
                 root.hash = root.value
@@ -174,6 +177,27 @@ class Individual:
             return False
         parent: Node = node.parent
         new_node: Node = self.rand_tree(Node(parent), min_d=2)
+        del self.node_refs[node.id]
+        self.remove_refs(node)
+        if parent is None:
+            self.genome = new_node
+        else:
+            if parent.left.id == node.id:
+                parent.left = new_node
+            else:
+                parent.right = new_node
+        self.fix_sizes(new_node, new_node.node_cnt - node.node_cnt)
+        self.fix_hashs(new_node)
+        return True
+
+    def shrink_mutate(self) -> bool:
+        pos: int = next(self.space.rand_nodes[self.tree_cnt])
+        node: Node = list(self.node_refs.values())[pos]
+        parent: Node = node.parent
+        new_node = Node(parent)
+        new_node.label, new_node.value = next(self.space.ts_iter)
+        new_node.hash = self.map[new_node.label]
+        self.node_refs[new_node.id] = new_node
         del self.node_refs[node.id]
         self.remove_refs(node)
         if parent is None:
