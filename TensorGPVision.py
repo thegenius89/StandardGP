@@ -1,5 +1,5 @@
 from numpy.random import rand, shuffle, randint
-from numpy import sin, cos
+from numpy import sin, cos, pi, add, subtract, multiply
 from numpy import arange, tile, apply_along_axis, full
 from numpy import ndarray, where
 
@@ -12,6 +12,10 @@ class TensorGPVision:
         self.hashes = full((self.ps, self.depth), 0)
         self.labels = randint(0, self.gs, size=(self.ps, self.depth))
         apply_along_axis(shuffle, arr=self.tree_matrix, axis=1)
+        self.map = {
+            0: x, 1: y, 2: full(x.size, 1.0), 2: full(x.size, pi),
+            3: add, 4: subtract, 5: multiply, 6: sin, 7: cos,
+        }
         print(self.tree_matrix)
 
     def mutation(self) -> None:

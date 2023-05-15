@@ -67,24 +67,25 @@ gp = GP(x, y, cfg={"mutations": 0.25, ...})
     sin, cos, tan, exp[p], sqrt[abs], log[p], square[max]
     pi, pi/2, 1, 2, 0.5, uniform(0, 10)
 
+
 ## Coming
-- blow control also in the copy reproduction operator to have complete control over size dynamics
-- register repo for the "Living Benchmark Suite"
-  [https://github.com/cavalab/srbench](https://github.com/cavalab/srbench)
+- Full vectorized GP-Operators that are easy to automatically adapt
+- Meta learner with knowledge transfere between thousands of problems
+- Meta learner with programmatically evoled opetarors
+- Visualisation of evolved operators
+- Register repo for the "Living Benchmark Suite"
+
+[https://github.com/cavalab/srbench](https://github.com/cavalab/srbench)
 - pip install standardgp
 
-## Coming soon
-- Full vectorized GP-Operators that are easy to automatically adapt
-- Visualisation of evolved operators
-- A full vectorized version will just contain 250 lines of algorithmic code instead of 500
-- Allowing dynamic hyperparameter like mutation rates that depends on position and generation -> cfg={"mutations": lambda p, g: 1 / p * sin(g)}
-
 ## Visions
-GP will one day be able to find optimal Neural Network architectures, many equivalent forms of Einsteins
-field equation and Schrödingers equation that are very interesting to study or may be able to find solutions
-to fundamental mathematical questions. Once there are operators that work globally for all problems to navigate a
-search through the infinite function space to find near optimal solutions the GP algorithms will begin to alter
-its own operators and algorithms to find even better and novel approaches to problems.
+I think it's clear for the GP community that evolving systems based on
+formal logic are in principle an unimaginable amout more efficient then
+artifical neural networks in doing the same task. These networks are just
+a subclass of a system that can create arbitrary complex programs.
+GP will be able to build optimal neural network architectures.
+Unfortunately these systems are way more complex then ANNs and it will
+take time to catch up ANNs with GP.
 
 </body>
 </html>
