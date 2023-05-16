@@ -18,6 +18,7 @@ class SearchSpace:
     SearchSpace also defines how to map Node labes to the corresponding
     data or operator and the corresponding hash value or operator.
     """
+
     def __init__(self, x: ndarray, y: ndarray, cfg):
         self.x_train: ndarray = x.T
         self.y_train: ndarray = y
@@ -116,9 +117,7 @@ class SearchSpace:
             "sqrt": self.hpsqrt,
         }
         # float64 random variable for each input
-        label_hash.update(
-            {k: rand() for k, _ in space.items() if k not in label_hash}
-        )
+        label_hash.update({k: rand() for k, _ in space.items() if k not in label_hash})
         # mapping the Node labels to the functions
         self.mapper: dict = {}
         for arr in self.terminals + self.binary + self.unary:

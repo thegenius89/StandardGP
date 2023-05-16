@@ -11,13 +11,13 @@ from Individual import Individual
 from SearchSpace import SearchSpace
 
 
-def run_wrapper(gp, store, seed) -> None:
+def run_wrapper(gp_args, store, seed) -> None:
     """
     Initialize a new GP instance for each process.
     """
     if seed != 0:
         GP.seed(seed)
-    gp = GP(gp[0], gp[1], gp[2])
+    gp = GP(gp_args[0], gp_args[1], gp_args[2])
     gp.init_pop()
     gp.run_threaded(store)
 
@@ -44,16 +44,19 @@ class GP:
     StandardGP is a multi-core symbolic regression algorithm
     with vectorized fitness evaluation and a reduced function space.
     """
-    cfg: dotdict = dotdict({
-        "gens": 100,
-        "pop_size": 4000,
-        "elites": 0.15,
-        "crossovers": 0.70,
-        "mutations": 0.10,
-        "max_nodes": 24,
-        "cache_size": 500000,  # make sure your RAM supports this
-        "precision": 1e-8,
-    })
+
+    cfg: dotdict = dotdict(
+        {
+            "gens": 100,
+            "pop_size": 4000,
+            "elites": 0.15,
+            "crossovers": 0.70,
+            "mutations": 0.10,
+            "max_nodes": 24,
+            "cache_size": 500000,  # make sure your RAM supports this
+            "precision": 1e-8,
+        }
+    )
 
     mutations: int = 0
     crossovers: int = 0
@@ -126,13 +129,16 @@ class GP:
         self.sizes[:] = self.sizes[sort_fit]
 
     def mutate_pop(self) -> None:
-        # mutation based on fitness
-        size: int = int(self.ps * self.cfg.mutations)
-        if size == 0:
-            return
+        # dynamic shrink mutation
+        # rate = average(self.sizes) / self.cfg.max_nodes
+        # size: int = int(self.ps * rate * 0.20)
         # upper: indices = choice(self.ps, p=self.upper_probs, size=size)
         # iter = map(lambda a: self.shrink(a), upper)
         # fromiter(iter, None)
+        # subtree mutation based on fitness
+        size: int = int(self.ps * self.cfg.mutations)
+        if size == 0:
+            return
         self.sort_pop()
         upper: indices = choice(self.ps, p=self.upper_probs, size=size)
         iter = map(lambda a: self.mutate(a), upper)
@@ -229,37 +235,35 @@ class GP:
 
     def rand_config(self) -> dict:
         from random import randint
+
         cfg = self.cfg
-        cfg.update({
-            "elites": randint(5, 15) / 100.0,
-            "crossovers": randint(20, 60) / 100.0,
-            "mutations": randint(3, 15) / 100.0,
-        })
+        cfg.update(
+            {
+                "elites": randint(5, 15) / 100.0,
+                "crossovers": randint(20, 60) / 100.0,
+                "mutations": randint(3, 15) / 100.0,
+            }
+        )
         return cfg
 
     def run(self, show=False, threads=1) -> tuple:
         # run single threaded
-        shared_dict: dict = self.get_default_stats()
         if threads <= 1:
             self.init_pop()
+            shared_dict: dict = self.get_default_stats()
             return self.run_threaded(shared_dict, show=show, simplify=True)
         # run multiple instances and stop if any solution is found
         shared_dict: dict = Manager().dict(self.get_default_stats())
         if show:
-            printer = Process(  # streams stats to the console
-                target=output_stream,
-                args=(shared_dict, self.cfg, ),
-            )
+            printer = Process(target=output_stream, args=(shared_dict, self.cfg))
             printer.start()
         processes: list = []
+        gp_args = (self.x, self.y, self.cfg)
         for i in range(threads):
-            processes.append(Process(  # runs a GP algorithm
-                target=run_wrapper, args=(
-                    (self.x, self.y, self.cfg),  # train x, train y, config
-                    shared_dict,  # shared stats
-                    GP.init_seed * (i + 1),  # seed for each process
-                ),
-            ))
+            proc_seed = GP.init_seed * (i + 1)
+            processes.append(
+                Process(target=run_wrapper, args=(gp_args, shared_dict, proc_seed))
+            )
             processes[-1].start()
         [p.join() for p in processes]
         shared_dict["done"] = True

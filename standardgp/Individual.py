@@ -12,6 +12,7 @@ class Node:
     All functions and the input ndarrays are directly inside the value.
     Every Node has a unique ID to maintain references to all nodes.
     """
+
     ID: int = 0
 
     def __init__(self, perent):
@@ -38,6 +39,7 @@ class Individual:
     The Crossover-Operator is inplace, swapping directly two subtrees
     within two trees. The parser directly works on the ndarrays and functions.
     """
+
     unique_fits: defaultdict = defaultdict(int)
     tree_cache: dict = {}
     subtree_cache: dict = {}
@@ -96,9 +98,7 @@ class Individual:
             key: float = root.hash
             if key in Individual.subtree_cache:
                 return Individual.subtree_cache[key]
-            new_result = root.value(
-                self.parse(root.left), self.parse(root.right)
-            )
+            new_result = root.value(self.parse(root.left), self.parse(root.right))
             if len(Individual.subtree_cache) < self.cfg.cache_size:
                 Individual.subtree_cache[key] = new_result
             return new_result
@@ -210,6 +210,8 @@ class Individual:
         pos: int = next(self.space.rand_nodes[self.tree_cnt])
         node: Node = list(self.node_refs.values())[pos]
         parent: Node = node.parent
+        if parent is None:
+            return False
         new_node = Node(parent)
         new_node.label, new_node.value = next(self.space.term_iter)
         new_node.hash = self.map[new_node.label]
