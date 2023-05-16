@@ -7,8 +7,12 @@ from numpy import full, array, ndarray, where, unique
 from numpy.random import choice
 from time import time, sleep
 
-from Individual import Individual
-from SearchSpace import SearchSpace
+try:
+    from Individual import Individual
+    from SearchSpace import SearchSpace
+except Exception:
+    from standardgp.Individual import Individual
+    from standardgp.SearchSpace import SearchSpace
 
 
 def run_wrapper(gp_args, store, seed) -> None:
