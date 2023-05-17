@@ -64,19 +64,19 @@ class Individual:
         maxi: int = cfg.max_nodes
         size: int = self.tree_cnt
         if self.hash in Individual.tree_cache:
-            fit = Individual.tree_cache[self.hash]
+            # fit = Individual.tree_cache[self.hash]
             # if Individual.unique_fits[fit] > 1000:
             #     Individual.tree_cache[self.hash] = 1.0
             return Individual.tree_cache[self.hash]
         if size >= maxi or size < 3:
             Individual.tree_cache[self.hash] = 1.0
-            return 1.0
+            return 1.0  # worst fitness
         pred: array = self.parse(self.genome)
         pred: array = pred - add.reduce(pred) / self.probl_size
         norm_arr: float = add.reduce(pred * pred) ** 0.5
         if norm_arr == 0:
             Individual.tree_cache[self.hash] = 1.0
-            return 1.0
+            return 1.0  # worst fitness
         error = add.reduce((self.target - (pred / norm_arr)) ** 2)
         fit: float = error / (self.probl_size + 1)
         Individual.unique_fits[fit] += 1
@@ -107,7 +107,8 @@ class Individual:
 
     # creates a new random tree <
     def rand_tree(self, root: Node, min_d=2, max_d=4) -> Node:
-        if random() < 0.2 and max_d > 1:
+        fill_strength = 0.2
+        if random() < fill_strength and max_d > 1:
             root.label, root.value = next(self.space.binary_iter)
             root.left = self.rand_tree(Node(root), min_d - 1, max_d - 1)
             root.right = self.rand_tree(Node(root), min_d - 1, max_d - 1)
@@ -115,7 +116,7 @@ class Individual:
             root.hash_l = root.left.hash
             root.hash_r = root.right.hash
             root.hash = self.map[root.label](root.hash_l, root.hash_r)
-        elif random() < 0.2 and max_d > 1:
+        elif random() < fill_strength and max_d > 1:
             root.label, root.value = next(self.space.unary_iter)
             root.left = self.rand_tree(Node(root), min_d - 1, max_d - 1)
             root.node_cnt += root.left.node_cnt
@@ -189,7 +190,7 @@ class Individual:
         pos: int = next(self.space.rand_nodes[self.tree_cnt])
         node: Node = list(self.node_refs.values())[pos]
         maxi: int = self.cfg.max_nodes
-        if self.tree_cnt + 16 >= maxi * 3:
+        if (self.tree_cnt * 2) >= maxi * 3:
             return False
         parent: Node = node.parent
         new_node: Node = self.rand_tree(Node(parent), min_d=2)
