@@ -1,6 +1,6 @@
 import numpy as np
 
-from GP import GP
+from standardgp import GP
 
 # meassure time
 # python -m cProfile -o out ExampleFunc.py
