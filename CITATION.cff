@@ -1,10 +1,15 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite it as below."
-author:
-- family-names: "Foken"
-  given-names: "Thure Merlin"
-  orcid: "https://orcid.org/0009-0002-1576-556X"
-title: "StandardGP MetaLearning"
+title: StandardGP MetaLearning
+message: 'If you use this software, please cite it as below.'
+type: software
+authors:
+  - given-names: Thure Merlin
+    family-names: Foken
+    email: thurefoken@gmail.com
+    name-particle: Thure
+    orcid: 'https://orcid.org/0009-0002-1576-556X'
+repository-code: 'https://github.com/thegenius89/StandardGP'
+abstract: 'Tree-based Genetic Programming, Meta-Learner'
+license: BSD-3-Clause
 version: 0.1.0
-date-released: 2023-05-09
-url: "https://github.com/thegenius89/StandardGP"
+date-released: '2023-05-09'
