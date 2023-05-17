@@ -12,10 +12,10 @@ import math
 
 class SearchSpace:
     """
-    SearchSpace inclues the function space and the search space.
+    SearchSpace includes the function space and the search space.
     The function space is defined as every mathematical function.
     The search space is defined as any combination of given operators.
-    SearchSpace also defines how to map Node labes to the corresponding
+    SearchSpace also defines how to map Node labels to the corresponding
     data or operator and the corresponding hash value or operator.
     """
 

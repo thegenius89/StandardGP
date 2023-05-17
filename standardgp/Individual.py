@@ -36,7 +36,7 @@ class Individual:
     Creating a new Individual results in creating a random mathematical
     equation, randomly distributed in search space and initial size.
 
-    The Crossover-Operator is inplace, swapping directly two subtrees
+    The Crossover-Operator is in-place, swapping directly two subtrees
     within two trees. The parser directly works on the ndarrays and functions.
     """
 

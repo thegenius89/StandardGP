@@ -28,7 +28,7 @@ def run_wrapper(gp_args, store, seed) -> None:
 
 def output_stream(store, cfg) -> None:
     """
-    A Thread that prints the best model over all cores to the console.
+    A thread that prints the best model over all cores to the console.
     """
     while not store["done"] and store["best"] > cfg.precision:
         if store["repr"]:
@@ -45,7 +45,7 @@ class dotdict(dict):
 
 class GP:
     """
-    StandardGP is a multi-core symbolic regression algorithm
+    StandardGP is a multicore symbolic regression algorithm
     with vectorized fitness evaluation and a reduced function space.
     """
 
