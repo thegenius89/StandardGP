@@ -32,7 +32,7 @@ class FunctionSpaceLearner:
 
 
 def main():
-    learner = FunctionSpaceMetaLearner()
+    learner = FunctionSpaceLearner()
     learner.build_equivalent_matrix()
     # learner.build_reduction_matrix()
     # learner.build_pam_matrix()

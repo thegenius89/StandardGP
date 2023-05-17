@@ -3,7 +3,7 @@ message: "If you use this software, please cite it as below."
 author:
 - family-names: "Foken"
   given-names: "Thure Merlin"
-  e-mail: thurefoken@gmail.com
+  e-mail: "thurefoken@gmail.com"
 title: "StandardGP MetaLearning"
 version: 0.1.0
 date-released: 2023-05-09
