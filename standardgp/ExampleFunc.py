@@ -2,10 +2,6 @@ import numpy as np
 
 from standardgp import GP
 
-# meassure time
-# python -m cProfile -o out ExampleFunc.py
-# python -m pstats out
-
 
 if __name__ == "__main__":
     # GP.seed(129)
@@ -21,6 +17,6 @@ if __name__ == "__main__":
     # x = np.random.rand(200, 5)
     # y = (np.tan(x[:, 0]) / np.exp(x[:, 1])) * (np.log(x[:, 2]) - np.tan(x[:, 3]))
     gp = GP(x, y)
-    best_fit, model = gp.run(show=True, threads=1)
-    print("Error: {}, Model: {}".format(best_fit, model))
+    error, model = gp.run(show=True, threads=8)
+    print("Error: {}, Model: {}".format(error, model))
     print("RMSE:", np.sqrt(np.mean(np.square(gp.predict(x) - y))))

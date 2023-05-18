@@ -23,8 +23,8 @@ class TestIndividual(unittest.TestCase):
         )
         space = SearchSpace(x, y, cfg)
         indi = Individual(cfg, space)
-        self.assertEqual(indi.tree_cnt, indi.genome.node_cnt)
-        self.assertEqual(indi.tree_cnt, len(indi.node_refs))
+        self.assertEqual(indi.tree_size, indi.genome.size)
+        self.assertEqual(indi.tree_size, len(indi.node_refs))
 
     def test_delete(self):
         x = rand(200, 5)

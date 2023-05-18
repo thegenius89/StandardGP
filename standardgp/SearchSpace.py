@@ -62,7 +62,7 @@ class SearchSpace:
             ("tan", self.space["tan"]),
         ]
         # bring the input and output in the right form for GP
-        self.size: float = self.x_train.shape[1] * 1.0
+        self.probl_size: float = self.x_train.shape[1] * 1.0
         self.target: ndarray = self.normalize(y)
         for input in range(self.x_train.shape[0]):
             input_name = "x{}".format(input)
@@ -79,7 +79,7 @@ class SearchSpace:
 
     def normalize(self, pred: ndarray) -> ndarray:
         # location and scale invariance
-        pred: ndarray = pred - add.reduce(pred) / self.size
+        pred: ndarray = pred - add.reduce(pred) / self.probl_size
         pred: ndarray = pred / (add.reduce(pred * pred) ** 0.5)
         return pred
 

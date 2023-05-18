@@ -100,7 +100,9 @@ class GP:
         return Individual(self.cfg, self.space, min_d, max_d)
 
     def init_pop(self) -> None:
-        # fill population with non-zero-fitness trees
+        """
+        Fill population with non-zero-fitness trees
+        """
         cnt: int = 0
         while cnt < self.ps:
             indi = self.new()
@@ -108,21 +110,14 @@ class GP:
             if fit != 1.0:
                 self.pop[cnt] = indi
                 self.fits[cnt] = fit
-                self.sizes[cnt] = indi.tree_cnt
+                self.sizes[cnt] = indi.tree_size
                 self.update_best(cnt)
                 cnt += 1
 
     def mutate(self, pos: int) -> None:
         if self.pop[pos].subtree_mutate():
             self.fits[pos] = self.pop[pos].get_fit()
-            self.sizes[pos] = self.pop[pos].tree_cnt
-            self.update_best(pos)
-            GP.mutations += 1
-
-    def shrink(self, pos: int) -> None:
-        if self.pop[pos].shrink_mutate():
-            self.fits[pos] = self.pop[pos].get_fit()
-            self.sizes[pos] = self.pop[pos].tree_cnt
+            self.sizes[pos] = self.pop[pos].tree_size
             self.update_best(pos)
             GP.mutations += 1
 
@@ -133,12 +128,6 @@ class GP:
         self.sizes[:] = self.sizes[sort_fit]
 
     def mutate_pop(self) -> None:
-        # dynamic shrink mutation
-        # rate = average(self.sizes) / self.cfg.max_nodes
-        # size: int = int(self.ps * rate * 0.20)
-        # upper: indices = choice(self.ps, p=self.upper_probs, size=size)
-        # iter = map(lambda a: self.shrink(a), upper)
-        # fromiter(iter, None)
         # subtree mutation based on fitness
         size: int = int(self.ps * self.cfg.mutations)
         if size == 0:
@@ -151,9 +140,6 @@ class GP:
     def copy_elites(self, elites: int) -> None:
         if elites == 0:
             return
-        # size control in progress
-        # elite_probs = self.elite_probs / self.sizes[self.elite_range]
-        # elite_probs += full(elite_probs.size, (1 - sum(elite_probs)) / elite_probs.size)
         copies = choice(self.elite_range, p=self.elite_probs, size=elites)
         for idx, elite in enumerate(copies):
             self.pop[idx].copy(self.pop[elite])
@@ -164,8 +150,8 @@ class GP:
         if self.pop[i].crossover(self.pop[j]):
             self.fits[i] = self.pop[i].get_fit()
             self.fits[j] = self.pop[j].get_fit()
-            self.sizes[i] = self.pop[i].tree_cnt
-            self.sizes[j] = self.pop[j].tree_cnt
+            self.sizes[i] = self.pop[i].tree_size
+            self.sizes[j] = self.pop[j].tree_size
             self.update_best(i)
             self.update_best(j)
             GP.crossovers += 1
@@ -173,12 +159,6 @@ class GP:
         GP.cx_rejected += 1
 
     def reproduction(self) -> None:
-        # size control in progress
-        """indices = where(self.sizes > average(self.sizes) * 2.0)[0]
-        for i in indices:
-            self.pop[i] = self.new(min_d=2, max_d=4)
-            self.fits[i] = self.pop[i].get_fit()
-            self.sizes[i] = self.pop[i].tree_cnt"""
         self.sort_pop()
         self.copy_elites(self.elites)
         # more then 2 parents possible

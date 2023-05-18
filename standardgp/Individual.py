@@ -24,7 +24,7 @@ class Node:
         self.hash_l: float = 0.0
         self.hash_r: float = 0.0
         self.hash: float = 0.0
-        self.node_cnt: int = 1
+        self.size: int = 1
         self.id: int = Node.ID
         Node.ID += 1
 
@@ -47,14 +47,14 @@ class Individual:
 
     def __init__(self, cfg, space, min_d=2, max_d=4):
         self.space: SearchSpace = space
-        self.map: dict = self.space.mapper
+        self.map: dict = self.space.mapper  # label to hash-function
         self.cfg: dotdict = cfg
-        self.node_refs: dict = {}
+        self.node_refs: dict = {}  # maintains refs to all nodes
         self.const_prob: flaot = 1 / len(self.space.terminals)
         self.genome = self.rand_tree(Node(None), min_d=min_d, max_d=max_d)
-        self.tree_cnt: int = self.genome.node_cnt
+        self.tree_size: int = self.genome.size
         self.target: ndarray = space.target
-        self.probl_size: float = space.size
+        self.probl_size: float = space.probl_size
         self.hash: float = self.genome.hash
 
     # fitness with reduced function space <
@@ -62,22 +62,19 @@ class Individual:
         Individual.fit_calls += 1
         cfg: dotdict = self.cfg
         maxi: int = cfg.max_nodes
-        size: int = self.tree_cnt
+        size: int = self.tree_size
         if self.hash in Individual.tree_cache:
-            # fit = Individual.tree_cache[self.hash]
-            # if Individual.unique_fits[fit] > 1000:
-            #     Individual.tree_cache[self.hash] = 1.0
             return Individual.tree_cache[self.hash]
         if size >= maxi or size < 3:
             Individual.tree_cache[self.hash] = 1.0
             return 1.0  # worst fitness
-        pred: array = self.parse(self.genome)
-        pred: array = pred - add.reduce(pred) / self.probl_size
-        norm_arr: float = add.reduce(pred * pred) ** 0.5
+        prediction: array = self.parse(self.genome)
+        prediction = prediction - add.reduce(prediction) / self.probl_size
+        norm_arr: float = add.reduce(prediction * prediction) ** 0.5
         if norm_arr == 0:
             Individual.tree_cache[self.hash] = 1.0
             return 1.0  # worst fitness
-        error = add.reduce((self.target - (pred / norm_arr)) ** 2)
+        error = add.reduce((self.target - (prediction / norm_arr)) ** 2)
         fit: float = error / (self.probl_size + 1)
         Individual.unique_fits[fit] += 1
         Individual.tree_cache[self.hash] = fit
@@ -112,14 +109,14 @@ class Individual:
             root.label, root.value = next(self.space.binary_iter)
             root.left = self.rand_tree(Node(root), min_d - 1, max_d - 1)
             root.right = self.rand_tree(Node(root), min_d - 1, max_d - 1)
-            root.node_cnt += root.left.node_cnt + root.right.node_cnt
+            root.size += root.left.size + root.right.size
             root.hash_l = root.left.hash
             root.hash_r = root.right.hash
             root.hash = self.map[root.label](root.hash_l, root.hash_r)
         elif random() < fill_strength and max_d > 1:
             root.label, root.value = next(self.space.unary_iter)
             root.left = self.rand_tree(Node(root), min_d - 1, max_d - 1)
-            root.node_cnt += root.left.node_cnt
+            root.size += root.left.size
             root.hash_l = root.left.hash
             root.hash = self.map[root.label](root.hash_l)
         else:
@@ -144,9 +141,9 @@ class Individual:
         next_par: Node = root
         while next_par.parent:
             next_par = next_par.parent
-            next_par.node_cnt += diff
-        self.tree_cnt += diff
-        assert self.tree_cnt == next_par.node_cnt
+            next_par.size += diff
+        self.tree_size += diff
+        assert self.tree_size == next_par.size
 
     def fix_hashs(self, root: Node) -> None:
         n_p: Node = root
@@ -173,24 +170,24 @@ class Individual:
 
     def fix_refs(self, root: Node, other: Node) -> None:
         if root.left and root.right:
-            k_0, k_1 = root.left.id, root.right.id
-            self.node_refs[k_0] = other.node_refs.pop(k_0)
-            self.node_refs[k_1] = other.node_refs.pop(k_1)
+            k_left, k_right = root.left.id, root.right.id
+            self.node_refs[k_left] = other.node_refs.pop(k_left)
+            self.node_refs[k_right] = other.node_refs.pop(k_right)
             self.fix_refs(root.left, other)
             self.fix_refs(root.right, other)
         elif root.left and not root.right:
-            k_0 = root.left.id
-            self.node_refs[k_0] = other.node_refs.pop(k_0)
+            k_left = root.left.id
+            self.node_refs[k_left] = other.node_refs.pop(k_left)
             self.fix_refs(root.left, other)
 
     # >
 
     # genetic operators <
     def subtree_mutate(self) -> bool:
-        pos: int = next(self.space.rand_nodes[self.tree_cnt])
+        pos: int = next(self.space.rand_nodes[self.tree_size])
         node: Node = list(self.node_refs.values())[pos]
         maxi: int = self.cfg.max_nodes
-        if (self.tree_cnt * 2) >= maxi * 3:
+        if (self.tree_size * 2) >= maxi * 3:
             return False
         parent: Node = node.parent
         new_node: Node = self.rand_tree(Node(parent), min_d=2)
@@ -203,12 +200,12 @@ class Individual:
                 parent.left = new_node
             else:
                 parent.right = new_node
-        self.fix_sizes(new_node, new_node.node_cnt - node.node_cnt)
+        self.fix_sizes(new_node, new_node.size - node.size)
         self.fix_hashs(new_node)
         return True
 
     def shrink_mutate(self) -> bool:
-        pos: int = next(self.space.rand_nodes[self.tree_cnt])
+        pos: int = next(self.space.rand_nodes[self.tree_size])
         node: Node = list(self.node_refs.values())[pos]
         parent: Node = node.parent
         if parent is None:
@@ -226,7 +223,7 @@ class Individual:
                 parent.left = new_node
             else:
                 parent.right = new_node
-        self.fix_sizes(new_node, new_node.node_cnt - node.node_cnt)
+        self.fix_sizes(new_node, new_node.size - node.size)
         self.fix_hashs(new_node)
         return True
 
@@ -238,13 +235,13 @@ class Individual:
         cnt: int = 0
         while True:
             # search for a good crossover node
-            pos_1: int = next(rng[self.tree_cnt])
-            pos_2: int = next(rng[other.tree_cnt])
+            pos_1: int = next(rng[self.tree_size])
+            pos_2: int = next(rng[other.tree_size])
             subt_1: Node = own_nodes[pos_1]
             subt_2: Node = other_nodes[pos_2]
-            new_size_1 = self.tree_cnt + subt_2.node_cnt - subt_1.node_cnt
-            new_size_2 = other.tree_cnt + subt_1.node_cnt - subt_2.node_cnt
-            if subt_1.node_cnt == 1 or subt_2.node_cnt == 1:
+            new_size_1 = self.tree_size + subt_2.size - subt_1.size
+            new_size_2 = other.tree_size + subt_1.size - subt_2.size
+            if subt_1.size == 1 or subt_2.size == 1:
                 pass  # not allowed because no internal nodes
             elif subt_1.hash == subt_2.hash:
                 pass  # not allowed because there is no effect except blow
@@ -270,11 +267,11 @@ class Individual:
         subt_2.hash_l, subt_1.hash_l = subt_1.hash_l, subt_2.hash_l
         subt_2.hash_r, subt_1.hash_r = subt_1.hash_r, subt_2.hash_r
         subt_2.hash, subt_1.hash = subt_1.hash, subt_2.hash
-        subt_2.node_cnt, subt_1.node_cnt = subt_1.node_cnt, subt_2.node_cnt
+        subt_2.size, subt_1.size = subt_1.size, subt_2.size
         subt_2.left, subt_1.left = subt_1.left, subt_2.left
         subt_2.right, subt_1.right = subt_1.right, subt_2.right
-        self.fix_sizes(subt_1, subt_1.node_cnt - subt_2.node_cnt)
-        other.fix_sizes(subt_2, subt_2.node_cnt - subt_1.node_cnt)
+        self.fix_sizes(subt_1, subt_1.size - subt_2.size)
+        other.fix_sizes(subt_2, subt_2.size - subt_1.size)
         self.fix_hashs(subt_1)
         other.fix_hashs(subt_2)
         if subt_2.left:
@@ -292,7 +289,7 @@ class Individual:
     # tree copy <
     def copy_rec(self, root: Node, other) -> None:
         root.value, root.label = other.value, other.label
-        root.node_cnt = other.node_cnt
+        root.size = other.size
         root.hash_l = other.hash_l
         root.hash_r = other.hash_r
         root.hash = other.hash
@@ -314,7 +311,7 @@ class Individual:
 
     def copy(self, other) -> None:
         self.node_refs: dict = {}
-        self.tree_cnt: int = other.tree_cnt
+        self.tree_size: int = other.tree_size
         self.hash: float = other.hash
         self.genome.id: int = Node.ID
         Node.ID += 1
@@ -373,8 +370,8 @@ class Individual:
 
     def remove_node(self, root, new_const) -> None:
         self.remove_refs(root)
-        self.fix_sizes(root, -(root.node_cnt - 1))
-        root.node_cnt = 1
+        self.fix_sizes(root, -(root.size - 1))
+        root.size = 1
         root.left = None
         root.right = None
         root.value = new_const
@@ -389,7 +386,7 @@ class Individual:
             return
         del self.node_refs[child.id]
         self.fix_sizes(root, -1)
-        root.node_cnt = child.node_cnt
+        root.size = child.size
         root.left = child.left
         root.right = child.right
         root.value = child.value
