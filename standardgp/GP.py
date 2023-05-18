@@ -4,7 +4,8 @@
 from multiprocessing import Process, Manager
 from numpy import argsort, arange, sum, average, fromiter
 from numpy import full, array, ndarray, where, unique
-from numpy.random import choice
+from numpy.random import choice, seed
+from random import seed as std_lib_seed
 from time import time, sleep
 
 try:
@@ -71,6 +72,7 @@ class GP:
         self.cfg.update(cfg)
         self.x, self.y = x, y  # training data
         self.space = SearchSpace(self.x, self.y, self.cfg)
+        self.global_node_refs = {}
         self.gen: int = 0
         self.ps: int = self.cfg.pop_size
         self.elites: int = int(self.ps * self.cfg.elites)
@@ -89,15 +91,14 @@ class GP:
 
     @staticmethod
     def seed(value: int) -> None:
-        from numpy.random import seed
-        from random import seed as std_lib_seed
-
         seed(value)
         std_lib_seed(value)
         GP.init_seed = value
 
     def new(self, min_d=2, max_d=4) -> Individual:
-        return Individual(self.cfg, self.space, min_d, max_d)
+        indi = Individual(self.cfg, self.space, min_d, max_d)
+        # self.global_node_refs.update(indi.node_refs)
+        return indi
 
     def init_pop(self) -> None:
         """

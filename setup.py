@@ -14,8 +14,6 @@ setup(
     keywords=["Regression", "ML", "GP", "Genetic Programming", "SGP"],
     install_requires=[
         "numpy",
-        "scipy",
-        "flake8",
         "pmlb",
     ],
     classifiers=[

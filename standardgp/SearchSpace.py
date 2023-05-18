@@ -2,7 +2,7 @@
 # All rights reserved.
 
 from itertools import cycle
-from numpy import ndarray, add, tan, subtract, multiply, divide
+from numpy import ndarray, add, tan, subtract, multiply, divide, polyfit
 from numpy import cos, sin, absolute, pi, where, log, sqrt, exp
 from numpy.random import rand
 from random import choice, randint
@@ -86,12 +86,9 @@ class SearchSpace:
     def reconstruct_invariances(self, repr) -> str:
         # reconstructs the invariants after the run
         try:
-            from scipy.stats import linregress
-
             x: ndarray = eval(repr, self.space)
             y: ndarray = self.y_train
-            slope, intercept, _r, _p, _std_err = linregress(x, y)
-            slope, intercept = round(slope, 8), round(intercept, 8)
+            slope, intercept = polyfit(x, y, 1)
             return "{} + {} * ({})".format(intercept, slope, repr)
         except Exception:
             return repr
