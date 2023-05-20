@@ -1,4 +1,8 @@
 standardgp/__pycache__
 __pycache__
 standardgp/datasets/
+standardgp/out
 dev
+StandardGP.egg-info/
+build/
+dist/

@@ -121,19 +121,24 @@ class SearchSpace:
             self.mapper[arr[0]] = label_hash[arr[0]]
 
     # protected numpy functions <
-    def sq(self, a: ndarray) -> ndarray:  # against too large squares
+    @staticmethod
+    def sq(a: ndarray) -> ndarray:  # against too large squares
         return a * where((a > 1000), 1, a)
 
-    def psqrt(self, a: ndarray) -> ndarray:  # against negative sqrt
+    @staticmethod
+    def psqrt(a: ndarray) -> ndarray:  # against negative sqrt
         return sqrt(absolute(a))
 
-    def plog(self, a: ndarray) -> ndarray:  # against log of <= 0
+    @staticmethod
+    def plog(a: ndarray) -> ndarray:  # against log of <= 0
         return log(absolute(where((a <= 0), 1, a)))
 
-    def pexp(self, a: ndarray) -> ndarray:  # against too large results
+    @staticmethod
+    def pexp(a: ndarray) -> ndarray:  # against too large results
         return exp(where((absolute(a) > 5), 0, a))
 
-    def pdiv(self, a: ndarray, b: ndarray) -> ndarray:  # against x/lim(0)
+    @staticmethod
+    def pdiv(a: ndarray, b: ndarray) -> ndarray:  # against x/lim(0)
         return divide(a, where((absolute(b) <= 0.000001), 1, b))
 
     # >

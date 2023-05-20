@@ -6,7 +6,9 @@ from numpy import argsort, arange, sum, average, fromiter
 from numpy import full, array, ndarray, where, unique
 from numpy.random import choice, seed
 from random import seed as std_lib_seed
+from random import randint
 from time import time, sleep
+
 
 try:
     from Individual import Individual
@@ -16,15 +18,16 @@ except Exception:
     from standardgp.SearchSpace import SearchSpace
 
 
-def run_wrapper(gp_args, store, seed) -> None:
+def run_wrapper(shared_dict, gp_args, seed) -> None:
     """
     Initialize a new GP instance for each process.
     """
     if seed != 0:
         GP.seed(seed)
     gp = GP(gp_args[0], gp_args[1], gp_args[2])
+    gp.shared_dict = shared_dict
     gp.init_pop()
-    gp.run_threaded(store)
+    gp.run_threaded()
 
 
 def output_stream(store, cfg) -> None:
@@ -68,11 +71,16 @@ class GP:
     cx_rejected: int = 0
     init_seed: int = 0
 
+    sq = SearchSpace.sq
+    log = SearchSpace.plog
+    exp = SearchSpace.pexp
+    div = SearchSpace.pdiv
+    sqrt = SearchSpace.psqrt
+
     def __init__(self, x, y, cfg={}):
         self.cfg.update(cfg)
         self.x, self.y = x, y  # training data
         self.space = SearchSpace(self.x, self.y, self.cfg)
-        self.global_node_refs = {}
         self.gen: int = 0
         self.ps: int = self.cfg.pop_size
         self.elites: int = int(self.ps * self.cfg.elites)
@@ -84,6 +92,7 @@ class GP:
         self.elite_range: indices = arange(self.ps - self.elites, self.ps)
         self.elite_probs: ndarray = self.get_rank_field(self.elites, 2.0)
         self.best, self.best_repr, self.best_indi = 1.0, "", self.new()
+        self.shared_dict: dict = self.get_default_stats()
 
     def get_rank_field(self, size, rank_exponent) -> ndarray:
         exp_ranks = arange(size) ** rank_exponent
@@ -96,9 +105,7 @@ class GP:
         GP.init_seed = value
 
     def new(self, min_d=2, max_d=4) -> Individual:
-        indi = Individual(self.cfg, self.space, min_d, max_d)
-        # self.global_node_refs.update(indi.node_refs)
-        return indi
+        return Individual(self.cfg, self.space, min_d, max_d)
 
     def init_pop(self) -> None:
         """
@@ -114,12 +121,20 @@ class GP:
                 self.sizes[cnt] = indi.tree_size
                 self.update_best(cnt)
                 cnt += 1
+        self.update_dict()
 
     def mutate(self, pos: int) -> None:
         if self.pop[pos].subtree_mutate():
             self.fits[pos] = self.pop[pos].get_fit()
             self.sizes[pos] = self.pop[pos].tree_size
             self.update_best(pos)
+            GP.mutations += 1
+
+    def shrink(self, pos: int) -> None:
+        if self.pop[pos].shrink_mutate():
+            # self.fits[pos] = self.pop[pos].get_fit()
+            # self.sizes[pos] = self.pop[pos].tree_size
+            # self.update_best(pos)
             GP.mutations += 1
 
     def sort_pop(self) -> None:
@@ -138,9 +153,19 @@ class GP:
         iter = map(lambda a: self.mutate(a), upper)
         fromiter(iter, None)
 
+    def shrink_pop(self) -> None:
+        size: int = int(self.ps * 0.00)
+        if size == 0:
+            return
+        upper: indices = choice(self.ps, p=self.upper_probs, size=size)
+        iter = map(lambda a: self.shrink(a), upper)
+        fromiter(iter, None)
+
     def copy_elites(self, elites: int) -> None:
         if elites == 0:
             return
+        # probs = self.elite_probs / (self.sizes[self.elite_range] * 0.1 + 1)
+        # probs += full(probs.size, (1 - sum(probs)) / probs.size)
         copies = choice(self.elite_range, p=self.elite_probs, size=elites)
         for idx, elite in enumerate(copies):
             self.pop[idx].copy(self.pop[elite])
@@ -192,9 +217,9 @@ class GP:
         print("Best expr     :", self.best_repr)
         print()
 
-    def termination(self, shared_dict: dict) -> bool:
+    def termination(self) -> bool:
         # found solution with given precision on another core
-        if self.update_dict(shared_dict):
+        if self.update_dict():
             return True
         # found solution with given precision
         if self.best <= self.cfg.precision:
@@ -219,14 +244,12 @@ class GP:
         }
 
     def rand_config(self) -> dict:
-        from random import randint
-
-        cfg = self.cfg
+        cfg = self.cfg.copy()
         cfg.update(
             {
-                "elites": randint(5, 15) / 100.0,
-                "crossovers": randint(20, 60) / 100.0,
-                "mutations": randint(3, 15) / 100.0,
+                "elites": randint(2, 22) / 100.0,
+                "crossovers": randint(20, 120) / 100.0,
+                "mutations": randint(2, 22) / 100.0,
             }
         )
         return cfg
@@ -235,19 +258,18 @@ class GP:
         # run single threaded
         if threads <= 1:
             self.init_pop()
-            shared_dict: dict = self.get_default_stats()
-            return self.run_threaded(shared_dict, show=show, simplify=True)
+            return self.run_threaded(show=show, simplify=True)
         # run multiple instances and stop if any solution is found
         shared_dict: dict = Manager().dict(self.get_default_stats())
         if show:
             printer = Process(target=output_stream, args=(shared_dict, self.cfg))
             printer.start()
         processes: list = []
-        gp_args = (self.x, self.y, self.cfg)
         for i in range(threads):
+            gp_args = (self.x, self.y, self.cfg)
             proc_seed = GP.init_seed * (i + 1)
             processes.append(
-                Process(target=run_wrapper, args=(gp_args, shared_dict, proc_seed))
+                Process(target=run_wrapper, args=(shared_dict, gp_args, proc_seed))
             )
             processes[-1].start()
         [p.join() for p in processes]
@@ -262,22 +284,23 @@ class GP:
         self.simplify_last_model()
         return round(self.best, 16), self.best_repr
 
-    def run_threaded(self, shared_dict, show=False, simplify=False) -> tuple:
+    def run_threaded(self, show=False, simplify=False) -> tuple:
         self.start = time()
         self.gen, gens = 1, self.cfg.gens + 1
         for gen in range(1, gens):
             self.gen = gen
             if (self.gen % (int(gens / 10) + 1) == 0) and show:
                 self.print_stats()
-            if self.termination(shared_dict):
+            if self.termination():
                 break
             self.mutate_pop()
+            self.shrink_pop()
             self.reproduction()
         if show:
             self.print_stats()
         if simplify:
             self.simplify_last_model()
-        self.update_dict(shared_dict)
+        self.update_dict()
         return round(self.best, 16), self.best_repr
 
     def simplify_last_model(self) -> None:
@@ -285,17 +308,18 @@ class GP:
         self.best_repr = self.best_indi.as_expression(self.best_indi.genome)
         self.best_repr = self.space.reconstruct_invariances(self.best_repr)
 
-    def update_dict(self, shared_dict) -> bool:
-        if self.best < shared_dict["best"]:
-            shared_dict["best"] = self.best
-            shared_dict["repr"] = self.best_repr
-            shared_dict["gen"] = self.gen
-            shared_dict["indi"] = self.best_indi
-        if shared_dict["best"] <= self.cfg.precision:
+    def update_dict(self) -> bool:
+        if self.best < self.shared_dict["best"]:
+            self.shared_dict["best"] = self.best
+            self.shared_dict["repr"] = self.best_repr
+            self.shared_dict["gen"] = self.gen
+            self.shared_dict["indi"] = self.best_indi
+        if self.shared_dict["best"] <= self.cfg.precision:
             return True
         return False
 
     def predict(self, x) -> ndarray:
         for input in range(x.T.shape[0]):
             self.space.space["x{}".format(input)] = x.T[input]
+        # should use the tree, so that as_expression is not used
         return eval(self.best_repr, self.space.space)
