@@ -12,6 +12,7 @@ setup(
     url="https://github.com/thegenius89/StandardGP",
     download_url="https://github.com/thegenius89/StandardGP",
     keywords=["Regression", "ML", "GP", "Genetic Programming", "SGP"],
+    python_requires=">=3.11.3",
     install_requires=[
         "numpy",
         "pmlb",
